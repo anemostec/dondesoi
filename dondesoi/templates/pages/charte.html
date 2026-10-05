@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Charte{% endblock %}
+{% block content %}
+<div class="prose">
+<h1>La charte de Don de soi</h1>
+
+<h2>Fondement</h2>
+<p>Don de soi est un système de communication chrétien (site web, application, réseaux sociaux)
+  qui a pour vocation de mettre en relation ses membres et de faciliter le don entre eux.</p>
+<p>Par le don, Don de soi veut essayer de vivre comme Jésus-Christ, et fonder une grande famille
+  sur laquelle on peut compter.</p>
+<p>Don de soi ne fait pas de prosélytisme : chacun reste entièrement libre de ses convictions. Le
+  seul prosélytisme est silencieux : c'est l'exemple de vie de chacun.</p>
+<p>Don de soi n'a aucun but lucratif.</p>
+<p>Chacun est à la fois donneur et receveur. Le don peut prendre toutes les formes possibles,
+  selon les besoins et les demandes de chacun. Chacun est capable de donner, même les plus
+  pauvres : du temps pour un coup de main, une prière, une écoute…</p>
+<p>Le don est vraiment un don de soi : le donneur n'attend rien en retour du receveur. Le don est
+  entièrement et définitivement gratuit.</p>
+
+<h2>Principe de fonctionnement</h2>
+<p>Chaque membre publie ce qu'il souhaite donner, et surtout ce qu'il souhaite recevoir. Chacun
+  donne et reçoit selon ses moyens, ses compétences et son temps.</p>
+<p>Un système de mise en relation propose automatiquement aux donateurs les receveurs potentiels,
+  en mettant toujours en premier les besoins de première nécessité. Les membres indiquent aussi
+  leurs déplacements prévus, pour que les dons voyagent sans frais d'expédition.</p>
+
+<h2>La transaction</h2>
+<p>Le donateur voit les informations publiées par les receveurs potentiels et les avis laissés
+  à leur sujet. <strong>Il est seul à décider</strong> à qui il donne.</p>
+<p>Le receveur ne voit du donateur que ce que celui-ci choisit de partager, et seulement une fois
+  le don engagé.</p>
+
+<h2>Abus de générosité</h2>
+<p>Les dons sont par nature limités : des demandes déraisonnables privent d'autres personnes dans
+  le besoin. Après chaque don, le donateur peut laisser un avis sur le receveur, avec
+  bienveillance et objectivité ; le receveur peut y répondre. Ces avis éclairent les donateurs
+  suivants, qui restent libres de donner même si les apparences sont défavorables.</p>
+
+<h2>Argent et publicité</h2>
+<p>Le don d'argent entre membres n'est pas permis. Voir la page
+  <a href="{{ url_for('main.don_argent') }}">Don d'argent</a>. Aucune publicité n'est acceptée ;
+  seuls des partenaires qui fournissent leurs solutions gratuitement sont mentionnés, sur la page
+  <a href="{{ url_for('main.partenaires') }}">Partenaires</a>.</p>
+</div>
+{% endblock %}

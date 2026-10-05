@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Mon espace{% endblock %}
+{% block content %}
+<h1>Bonjour {{ g.user.display_name }}</h1>
+
+{% if not a_des_dons or not a_des_besoins %}
+<div class="panel panel-soft">
+  {% if not a_des_dons and not a_des_besoins %}
+    <p>Chacun est à la fois donneur et receveur. Qu'aimeriez-vous donner ? Et de quoi auriez-vous
+      besoin ?</p>
+  {% elif not a_des_dons %}
+    <p>Vous avez exprimé un besoin. Avez-vous aussi quelque chose à offrir ? Un peu de temps, une
+      écoute, une prière sont aussi des dons.</p>
+  {% else %}
+    <p>Merci pour vos dons. Et vous, de quoi auriez-vous besoin ? Recevoir permet à un autre de
+      donner.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="actions">
+  <a class="btn" href="{{ url_for('annonces.nouvelle', kind='don') }}">Je propose un don</a>
+  <a class="btn btn-ghost" href="{{ url_for('annonces.nouvelle', kind='besoin') }}">J'exprime un besoin</a>
+  <a class="btn btn-ghost" href="{{ url_for('trajets.mes_trajets') }}">Mes trajets</a>
+  <a class="btn btn-ghost" href="{{ url_for('auth.profil') }}">Mon profil</a>
+</div>
+
+<h2>Mes annonces</h2>
+{% if mes_annonces %}
+<ul class="list panel">
+  {% for a in mes_annonces %}
+  <li>
+    <span class="tag tag-{{ a.kind }}">{{ 'Je donne' if a.kind == 'don' else "J'ai besoin" }}</span>
+    <a href="{{ url_for('annonces.detail', annonce_id=a.id) }}"><strong>{{ a.title }}</strong></a>
+    <span class="muted small">
+      {% if a.status == 'attribuee' %}· attribuée{% endif %}
+      {% if a.kind == 'don' and a.status == 'ouverte' %}
+        · voir les receveurs proposés{% if a.nb_interets %} ({{ a.nb_interets }} intéressé{{ 's' if a.nb_interets > 1 }}){% endif %}
+      {% endif %}
+    </span>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="muted">Aucune annonce pour l'instant.</p>
+{% endif %}
+
+{% if transports %}
+<h2>Dons à transporter</h2>
+<ul class="list panel">
+  {% for d in transports %}
+  <li>
+    <a href="{{ url_for('dons.detail', don_id=d.id) }}"><strong>{{ d.title }}</strong></a>
+    <span class="muted small">· {{ d.from_city }} → {{ d.to_city }}, le {{ d.date }}
+      · {{ 'demande en attente de votre réponse' if d.transport_status == 'demande' else 'accepté' if d.transport_status == 'accepte' else 'refusé' }}</span>
+  </li>
+  {% endfor %}
+</ul>
+{% endif %}
+
+<div class="row">
+  <div>
+    <h2>Dons que j'ai faits</h2>
+    {% if dons_donnes %}
+    <ul class="list panel">
+      {% for d in dons_donnes %}
+      <li><a href="{{ url_for('dons.detail', don_id=d.id) }}">{{ d.title }}</a>
+        <span class="muted small">à {{ d.receiver_name }} · {{ {'en_cours': 'en cours', 'realise': 'réalisé', 'annule': 'annulé'}[d.status] }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Pas encore.</p>{% endif %}
+  </div>
+  <div>
+    <h2>Dons que j'ai reçus</h2>
+    {% if dons_recus %}
+    <ul class="list panel">
+      {% for d in dons_recus %}
+      <li><a href="{{ url_for('dons.detail', don_id=d.id) }}">{{ d.title }}</a>
+        <span class="muted small">· {{ {'en_cours': 'en cours', 'realise': 'réalisé', 'annule': 'annulé'}[d.status] }}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Pas encore.</p>{% endif %}
+  </div>
+</div>
+{% endblock %}

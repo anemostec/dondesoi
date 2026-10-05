@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}{{ annonce.title }}{% endblock %}
+{% block content %}
+{% set essential = annonce.kind == 'besoin' and (annonce.essential or annonce.category in ESSENTIAL_CATEGORIES) %}
+<div class="two-col">
+<div>
+  <div class="tags" style="margin-top:1.4rem">
+    <span class="tag tag-{{ annonce.kind }}">{{ 'Don proposé' if annonce.kind == 'don' else 'Besoin' }}</span>
+    {% if essential %}<span class="tag tag-essential">Première nécessité</span>{% endif %}
+    <span class="tag">{{ CATEGORY_LABELS.get(annonce.category, annonce.category) }}</span>
+    {% if annonce.status != 'ouverte' %}<span class="tag">{{ 'attribuée' if annonce.status == 'attribuee' else 'clôturée' }}</span>{% endif %}
+  </div>
+  <h1>{{ annonce.title }}</h1>
+  {% if annonce.photo %}<img src="{{ url_for('annonces.photo', filename=annonce.photo) }}" alt="" style="border-radius:8px;max-height:420px">{% endif %}
+  {% if annonce.description %}<p style="white-space:pre-line">{{ annonce.description }}</p>{% endif %}
+  <p class="muted">
+    {% if annonce.kind == 'besoin' %}
+      {% if g.user %}<a href="{{ url_for('auth.membre', user_id=auteur.id) }}">{{ auteur.display_name }}</a>{% else %}{{ auteur.display_name }}{% endif %},
+    {% else %}Proposé par un membre, {% endif %}{{ annonce.city }}
+  </p>
+
+  {# Le donateur voit les receveurs proposés pour son don. #}
+  {% if candidats is defined %}
+  <h2>Receveurs proposés</h2>
+  <p class="muted small">Classés par priorité : les besoins de première nécessité d'abord, puis la
+    pertinence. Vous restez seul à décider.</p>
+  {% if candidats %}
+  <ul class="list panel">
+    {% for c in candidats %}
+    <li>
+      <strong><a href="{{ url_for('auth.membre', user_id=c.receiver_id) }}">{{ c.display_name }}</a></strong>
+      <span class="muted small">· {{ c.city }} · {{ c.dons_recus }} don{{ 's' if c.dons_recus > 1 }} reçu{{ 's' if c.dons_recus > 1 }} · {{ c.avis_count }} avis</span>
+      {% if c.essential %}<span class="tag tag-essential">Première nécessité</span>{% endif %}
+      {% if c.besoin %}<div>Besoin : <a href="{{ url_for('annonces.detail', annonce_id=c.besoin.id) }}">{{ c.besoin.title }}</a></div>{% endif %}
+      {% if c.interet and c.interet.message %}<div class="small">« {{ c.interet.message }} »</div>{% endif %}
+      <ul class="reasons">{% for r in c.reasons %}<li>{{ r }}</li>{% endfor %}</ul>
+      <div class="actions" style="margin:.5rem 0 0">
+        <a class="btn btn-small" href="{{ url_for('dons.preparer', offre=annonce.id, receveur=c.receiver_id, besoin=c.besoin.id if c.besoin else '') }}">Donner à {{ c.display_name }}</a>
+      </div>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Personne pour l'instant. Les membres peuvent vous signaler que ce don leur
+    serait utile ; ils apparaîtront ici.</p>
+  {% endif %}
+  {% endif %}
+
+  {# Le receveur voit les dons qui pourraient répondre à son besoin. #}
+  {% if suggestions is defined %}
+  <h2>Des dons qui pourraient vous correspondre</h2>
+  {% if suggestions %}
+  <div class="grid">
+    {% for s in suggestions %}{% set a = s.offre %}{% include "annonces/_card.html" %}{% endfor %}
+  </div>
+  {% else %}
+  <p class="muted">Rien pour l'instant. Votre besoin est visible par tous les donateurs.</p>
+  {% endif %}
+  {% endif %}
+</div>
+
+<aside>
+  <div class="panel" style="margin-top:1.4rem">
+  {% if not g.user %}
+    <p><a href="{{ url_for('auth.connexion', next=request.path) }}">Connectez-vous</a> pour
+      {{ 'signaler que ce don vous serait utile' if annonce.kind == 'don' else 'répondre à ce besoin' }}.</p>
+  {% elif is_owner %}
+    <p class="muted small">C'est votre annonce.</p>
+    {% if annonce.status != 'close' %}
+    <form method="post" action="{{ url_for('annonces.cloturer', annonce_id=annonce.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn btn-small btn-danger">Clôturer l'annonce</button>
+    </form>
+    {% endif %}
+  {% elif annonce.status != 'ouverte' %}
+    <p class="muted">Cette annonce n'est plus disponible.</p>
+  {% elif annonce.kind == 'don' %}
+    {% if mon_interet %}
+      <p>Vous avez signalé que ce don vous serait utile. Le donateur reste libre de son choix.</p>
+      <form method="post" action="{{ url_for('annonces.interet', annonce_id=annonce.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <input type="hidden" name="retirer" value="1">
+        <button class="btn btn-small btn-ghost">Retirer</button>
+      </form>
+    {% else %}
+      <form class="stack" method="post" action="{{ url_for('annonces.interet', annonce_id=annonce.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label for="message">Ce don me serait utile <span class="hint">(un mot pour le donateur, facultatif)</span></label>
+        <textarea id="message" name="message" style="min-height:4rem"></textarea>
+        <div><button class="btn btn-small">Le signaler au donateur</button></div>
+      </form>
+    {% endif %}
+  {% else %}
+    <h3 style="margin-top:0">Répondre à ce besoin</h3>
+    {% if mes_offres %}
+      <form class="stack" method="get" action="{{ url_for('dons.preparer') }}">
+        <input type="hidden" name="receveur" value="{{ auteur.id }}">
+        <input type="hidden" name="besoin" value="{{ annonce.id }}">
+        <label for="offre">Avec l'un de mes dons</label>
+        <select id="offre" name="offre">
+          {% for o in mes_offres %}<option value="{{ o.id }}">{{ o.title }}</option>{% endfor %}
+        </select>
+        <div><button class="btn btn-small">Continuer</button></div>
+      </form>
+      <p class="small muted">Vous pouvez aussi <a href="{{ url_for('annonces.nouvelle', kind='don') }}">publier un nouveau don</a> pour y répondre.</p>
+    {% else %}
+      <p class="small">Publiez d'abord <a href="{{ url_for('annonces.nouvelle', kind='don') }}">ce que vous pouvez donner</a>, puis revenez ici pour l'offrir à {{ auteur.display_name }}.</p>
+    {% endif %}
+  {% endif %}
+  </div>
+</aside>
+</div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<h1>Notifications</h1>
+{% if notifications %}
+  {% if unread_notifications %}
+  <form method="post" action="{{ url_for('notifications.tout_lu') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn btn-small btn-ghost">Tout marquer comme lu</button>
+  </form>
+  {% endif %}
+  <ul class="list panel">
+    {% for n in notifications %}
+    <li class="notif {{ 'notif-unread' if not n.read_at }}">
+      <a href="{{ n.link }}">{{ n.body }}</a>
+      <span class="small muted" style="margin-left:auto;white-space:nowrap">{{ n.created_at|heure }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p class="muted">Aucune notification pour l'instant.</p>
+{% endif %}
+<p class="hint">Vous pouvez choisir de les recevoir aussi par e-mail dans <a href="{{ url_for('auth.profil') }}">Mon profil</a>.</p>
+{% endblock %}

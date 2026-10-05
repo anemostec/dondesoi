@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Annonces{% endblock %}
+{% block content %}
+<h1>Annonces</h1>
+<p class="muted">Les besoins de première nécessité apparaissent en premier.</p>
+
+<form class="filters" method="get">
+  <div>
+    <label for="q">Rechercher</label>
+    <input type="search" id="q" name="q" value="{{ q }}" placeholder="Mot, ville…">
+  </div>
+  <div>
+    <label for="type">Type</label>
+    <select id="type" name="type">
+      <option value="">Tous</option>
+      <option value="don" {{ 'selected' if kind == 'don' }}>Dons proposés</option>
+      <option value="besoin" {{ 'selected' if kind == 'besoin' }}>Besoins</option>
+    </select>
+  </div>
+  <div>
+    <label for="categorie">Catégorie</label>
+    <select id="categorie" name="categorie">
+      <option value="">Toutes</option>
+      {% for key, label, _ in CATEGORIES %}
+        <option value="{{ key }}" {{ 'selected' if category == key }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <button class="btn">Filtrer</button>
+</form>
+
+{% if annonces %}
+<div class="grid">
+  {% for a in annonces %}{% include "annonces/_card.html" %}{% endfor %}
+</div>
+{% else %}
+<p class="muted">Aucune annonce ne correspond.</p>
+{% endif %}
+{% endblock %}

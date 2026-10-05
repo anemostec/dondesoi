@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}{{ don.title }}{% endblock %}
+{% block content %}
+{% set statuts = {'en_cours': 'en cours', 'realise': 'réalisé', 'annule': 'annulé'} %}
+<h1>{{ don.title }}</h1>
+<p class="muted">Don {{ statuts[don.status] }}
+  {% if is_donor %}· à <a href="{{ url_for('auth.membre', user_id=receiver.id) }}">{{ receiver.display_name }}</a>{% endif %}</p>
+
+<div class="two-col">
+<div>
+  {% if don.description %}<p style="white-space:pre-line">{{ don.description }}</p>{% endif %}
+
+  <div class="panel panel-soft">
+    {% if is_donor %}
+      <h3 style="margin-top:0">Ce que vous avez partagé avec {{ receiver.display_name }}</h3>
+    {% elif is_receiver %}
+      <h3 style="margin-top:0">Un membre vous fait ce don</h3>
+      <p class="small muted">Voici ce que votre donateur a choisi de partager avec vous :</p>
+    {% else %}
+      <h3 style="margin-top:0">Informations du donateur pour le transport</h3>
+    {% endif %}
+    <p style="white-space:pre-line">{{ don.shared_info or '(rien de plus)' }}</p>
+  </div>
+
+  {% if is_donor and don.status == 'en_cours' %}
+  <h2>Acheminement</h2>
+  {% if meme_ville %}
+    <p>Vous habitez la même ville : vous pouvez vous retrouver directement.</p>
+  {% elif trajet and don.transport_status in ('demande', 'accepte') %}
+    <p>{{ trajet.display_name }} fait le trajet {{ trajet.from_city }} → {{ trajet.to_city }} le
+      {{ trajet.date }} :
+      {{ 'demande envoyée, en attente de réponse.' if don.transport_status == 'demande' else 'a accepté de porter ce don !' }}</p>
+    {% if don.transport_status == 'accepte' and trajet.contact %}<p class="small">Contact : {{ trajet.contact }}</p>{% endif %}
+  {% elif trajets %}
+    {% if don.transport_status == 'refuse' %}<p class="muted small">Le voyageur sollicité n'a pas pu accepter.</p>{% endif %}
+    <p>Des membres font le trajet de chez vous vers {{ receiver.city }} :</p>
+    <ul class="list panel">
+      {% for t in trajets %}
+      <li>
+        <strong>{{ t.display_name }}</strong> · {{ t.from_city }} → {{ t.to_city }}, le {{ t.date }}
+        {% if t.note %}<div class="small muted">{{ t.note }}</div>{% endif %}
+        <form method="post" action="{{ url_for('dons.transport', don_id=don.id) }}" style="margin-top:.4rem">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="demander">
+          <input type="hidden" name="trajet_id" value="{{ t.id }}">
+          <button class="btn btn-small btn-olive">Lui demander de porter ce don</button>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="hint">Le voyageur verra ce que vous avez partagé ci-dessus et la ville du receveur.</p>
+  {% else %}
+    <p class="muted">Aucun trajet prévu de votre ville vers {{ receiver.city }} pour l'instant.</p>
+  {% endif %}
+
+  <div class="actions">
+    <form method="post" action="{{ url_for('dons.statut', don_id=don.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="realise">
+      <button class="btn">Le don est fait</button>
+    </form>
+    <form method="post" action="{{ url_for('dons.statut', don_id=don.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="annule">
+      <button class="btn btn-danger btn-small">Annuler ce don</button>
+    </form>
+  </div>
+  {% endif %}
+
+  {% if is_transporter %}
+  <h2>Transport</h2>
+  <p>Trajet {{ trajet.from_city }} → {{ trajet.to_city }}, le {{ trajet.date }}. À livrer à
+    {{ receiver_city }}.</p>
+  {% if don.transport_status == 'demande' %}
+  <div class="actions">
+    {% for action, label, cls in [('accepte', "J'accepte de le porter", 'btn'), ('refuse', 'Je ne peux pas', 'btn btn-ghost')] %}
+    <form method="post" action="{{ url_for('dons.transport', don_id=don.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="{{ action }}">
+      <button class="{{ cls }}">{{ label }}</button>
+    </form>
+    {% endfor %}
+  </div>
+  {% elif don.transport_status == 'accepte' %}<p>Vous avez accepté de porter ce don. Merci !</p>{% endif %}
+  {% endif %}
+
+  <h2 id="messages">Messages</h2>
+  {% if is_receiver %}<p class="hint">Votre donateur reste discret : il apparaît ici comme « le donateur ».</p>{% endif %}
+  <div class="thread">
+    {% for m in messages %}
+      <div class="msg {{ 'msg-mine' if m.mine }}">
+        <div class="small muted"><strong>{{ m.label }}</strong> · {{ m.created_at|heure }}</div>
+        <div style="white-space:pre-line">{{ m.body }}</div>
+      </div>
+    {% else %}
+      <p class="muted small">Aucun message pour l'instant.</p>
+    {% endfor %}
+  </div>
+  {% if can_write %}
+  <form class="stack" method="post" action="{{ url_for('dons.message', don_id=don.id) }}" style="margin-top:.8rem">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label for="msg-body" class="sr-only">Votre message</label>
+    <textarea id="msg-body" name="body" required style="min-height:4rem" placeholder="Votre message…"></textarea>
+    <div><button class="btn btn-small">Envoyer</button></div>
+  </form>
+  {% endif %}
+</div>
+
+<aside>
+  {% if don.status == 'realise' and (is_donor or is_receiver) %}
+  <div class="panel">
+    <h3 style="margin-top:0">Avis</h3>
+    {% if avis %}
+      <div class="avis">
+        <p>{{ avis.body }}</p>
+        {% if avis.reply %}<div class="reply"><strong>Réponse :</strong> {{ avis.reply }}</div>{% endif %}
+      </div>
+      {% if is_receiver and not avis.reply %}
+      <form class="stack" method="post" action="{{ url_for('dons.avis', don_id=don.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label for="body">Votre réponse</label>
+        <textarea id="body" name="body" style="min-height:4rem"></textarea>
+        <div><button class="btn btn-small">Répondre</button></div>
+      </form>
+      {% endif %}
+    {% elif is_donor %}
+      <form class="stack" method="post" action="{{ url_for('dons.avis', don_id=don.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <p class="hint">Avec bienveillance et objectivité : votre avis aidera les prochains
+          donateurs. Le receveur pourra y répondre.</p>
+        <textarea id="body" name="body" style="min-height:5rem" required></textarea>
+        <div><button class="btn btn-small">Publier l'avis</button></div>
+      </form>
+    {% else %}
+      <p class="muted small">Pas d'avis pour ce don.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+</aside>
+</div>
+{% endblock %}

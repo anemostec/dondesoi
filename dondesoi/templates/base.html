@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{% endblock %}{% if self.title() %} · {% endif %}Don de soi</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="site-header">
+  <div class="wrap header-inner">
+    <a class="logo" href="{{ url_for('main.accueil') }}"><span class="logo-mark" aria-hidden="true">✚</span> Don de soi</a>
+    <nav>
+      <a href="{{ url_for('annonces.liste') }}">Annonces</a>
+      <a href="{{ url_for('main.fonctionnement') }}">Fonctionnement</a>
+      <a href="{{ url_for('main.charte') }}">Charte</a>
+      {% if g.user %}
+        <a href="{{ url_for('main.tableau_de_bord') }}">Mon espace</a>
+        <a href="{{ url_for('notifications.liste') }}" class="notif-link" aria-label="Notifications{% if unread_notifications %} ({{ unread_notifications }} non lues){% endif %}">
+          <span aria-hidden="true">🔔</span>{% if unread_notifications %}<span class="badge">{{ unread_notifications }}</span>{% endif %}
+        </a>
+        <form method="post" action="{{ url_for('auth.deconnexion') }}" class="inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="linklike">Déconnexion</button>
+        </form>
+      {% else %}
+        <a href="{{ url_for('auth.connexion') }}">Connexion</a>
+        <a class="btn btn-small" href="{{ url_for('auth.inscription') }}">Rejoindre</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  {% for category, message in get_flashed_messages(with_categories=true) %}
+    <div class="flash {{ 'flash-error' if category == 'erreur' else '' }}">{{ message }}</div>
+  {% endfor %}
+  {% block content %}{% endblock %}
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-inner">
+    <p>Don de soi : sans but lucratif, sans publicité, entièrement open source.</p>
+    <p>
+      <a href="{{ url_for('main.pour_qui') }}">À qui s'adresse Don de soi</a> ·
+      <a href="{{ url_for('main.don_argent') }}">Don d'argent</a> ·
+      <a href="{{ url_for('main.partenaires') }}">Partenaires</a> ·
+      <a href="{{ url_for('main.contribuer') }}">Contribuer au code</a> ·
+      <a href="{{ SOURCE_URL or url_for('main.contribuer') }}">Code source (licence AGPL v3)</a>
+    </p>
+  </div>
+</footer>
+</body>
+</html>

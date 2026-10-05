@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Proposer un don' if kind == 'don' else 'Exprimer un besoin' }}{% endblock %}
+{% block content %}
+<h1>{{ 'Je propose un don' if kind == 'don' else "J'exprime un besoin" }}</h1>
+<p class="muted">
+  {% if kind == 'don' %}
+    Tout peut être un don : un objet, un service, du temps, une écoute, une prière.
+    Votre nom ne sera pas affiché sur l'annonce.
+  {% else %}
+    Dites simplement ce dont vous avez besoin. Recevoir permet à un autre de donner.
+  {% endif %}
+</p>
+
+<form class="stack" method="post" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="kind" value="{{ kind }}">
+  <div>
+    <label for="title">Titre</label>
+    <input type="text" id="title" name="title" required maxlength="120" value="{{ form.title or '' }}">
+  </div>
+  <div>
+    <label for="category">Catégorie</label>
+    <select id="category" name="category" required>
+      <option value="">Choisir…</option>
+      {% for key, label, _ in CATEGORIES %}
+        <option value="{{ key }}" {{ 'selected' if form.category == key }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div>
+    <label for="description">Description</label>
+    <textarea id="description" name="description">{{ form.description or '' }}</textarea>
+  </div>
+  <div>
+    <label for="city">Ville <span class="hint">(par défaut : {{ g.user.city }})</span></label>
+    <input type="text" id="city" name="city" value="{{ form.city or '' }}" placeholder="{{ g.user.city }}">
+  </div>
+  {% if kind == 'besoin' %}
+  <label class="check">
+    <input type="checkbox" name="essential" value="1" {{ 'checked' if form.essential }}>
+    <span>C'est un besoin de première nécessité (se nourrir, se loger, se vêtir, se soigner…).
+      <span class="hint">Il sera présenté en priorité aux donateurs.</span></span>
+  </label>
+  {% endif %}
+  <div>
+    <label for="photo">Photo <span class="hint">(facultatif)</span></label>
+    <input type="file" id="photo" name="photo" accept="image/*">
+  </div>
+  <p class="hint">Rappel : le don d'argent entre membres n'est pas permis.</p>
+  <div><button class="btn">Publier</button></div>
+</form>
+{% endblock %}

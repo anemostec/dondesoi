@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}{{ membre.display_name }}{% endblock %}
+{% block content %}
+<h1>{{ membre.display_name }}</h1>
+<p class="muted">{{ membre.city }} · membre depuis le {{ membre.created_at[:10] }} · {{ nb_recus }} don{{ 's' if nb_recus > 1 }} reçu{{ 's' if nb_recus > 1 }}</p>
+{% if membre.bio %}<p class="prose">{{ membre.bio }}</p>{% endif %}
+{% if membre.contact %}<p><strong>Contact :</strong> {{ membre.contact }}</p>{% endif %}
+
+<div class="two-col">
+<div>
+  <h2>Ses besoins</h2>
+  {% if besoins %}
+  <div class="grid">
+    {% for a in besoins %}{% include "annonces/_card.html" %}{% endfor %}
+  </div>
+  {% else %}<p class="muted">Aucun besoin en ce moment.</p>{% endif %}
+</div>
+<aside>
+  <h2>Avis des donateurs</h2>
+  {% for a in avis %}
+    <div class="avis">
+      <p>{{ a.body }}</p>
+      <p class="small muted">{{ a.created_at[:10] }}</p>
+      {% if a.reply %}<div class="reply"><strong>Réponse de {{ membre.display_name }} :</strong> {{ a.reply }}</div>{% endif %}
+    </div>
+  {% else %}
+    <p class="muted">Aucun avis.</p>
+  {% endfor %}
+</aside>
+</div>
+{% endblock %}

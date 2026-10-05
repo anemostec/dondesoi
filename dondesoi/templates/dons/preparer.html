@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Donner{% endblock %}
+{% block content %}
+<h1>Donner « {{ offre.title }} » à {{ receiver.display_name }}</h1>
+
+<div class="two-col">
+<div>
+  <form class="stack" method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="offre" value="{{ offre.id }}">
+    <input type="hidden" name="receveur" value="{{ receiver.id }}">
+    {% if besoin %}<input type="hidden" name="besoin" value="{{ besoin.id }}">{% endif %}
+    <div>
+      <label for="shared_info">Ce que vous partagez avec {{ receiver.display_name }}</label>
+      <p class="hint">C'est la seule chose qu'il ou elle saura de vous : un prénom, un moyen de
+        contact, un lieu et un moment de rendez-vous… Rien d'autre n'est transmis.</p>
+      <textarea id="shared_info" name="shared_info" placeholder="Ex. : Je peux vous le déposer samedi matin. Appelez-moi au …"></textarea>
+    </div>
+    {% if besoin %}
+    <label class="check">
+      <input type="checkbox" name="besoin_comble" value="1" checked>
+      <span>Ce don comble le besoin « {{ besoin.title }} »</span>
+    </label>
+    {% endif %}
+    <div class="actions">
+      <button class="btn">Je donne</button>
+      <a class="btn btn-ghost" href="{{ url_for('annonces.detail', annonce_id=offre.id) }}">Revenir</a>
+    </div>
+  </form>
+</div>
+
+<aside>
+  <div class="panel">
+    <h3 style="margin-top:0">{{ receiver.display_name }}</h3>
+    <p class="muted small">{{ receiver.city }}</p>
+    {% if receiver.bio %}<p class="small">{{ receiver.bio }}</p>{% endif %}
+    {% if receiver.contact %}<p class="small"><strong>Contact :</strong> {{ receiver.contact }}</p>{% endif %}
+    {% if besoin %}<p class="small"><strong>Besoin :</strong> {{ besoin.title }}</p>{% endif %}
+    <h3>Avis reçus ({{ avis|length }})</h3>
+    {% for a in avis %}
+      <div class="avis small">
+        <p>{{ a.body }}</p>
+        {% if a.reply %}<div class="reply"><strong>Réponse :</strong> {{ a.reply }}</div>{% endif %}
+      </div>
+    {% else %}
+      <p class="muted small">Aucun avis.</p>
+    {% endfor %}
+    <p class="hint">Les avis éclairent votre choix ; ils ne l'empêchent jamais.</p>
+  </div>
+</aside>
+</div>
+{% endblock %}

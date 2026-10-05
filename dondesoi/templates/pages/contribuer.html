@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Contribuer{% endblock %}
+{% block content %}
+<div class="prose">
+<h1>Contribuer au développement</h1>
+<p>Tout le code de Don de soi, y compris le système de mise en relation, est open source et
+  disponible pour tout le monde. Chacun peut participer au développement du site et des
+  applications.</p>
+<p>Le code est écrit en Python (Flask) avec une base SQLite, sans étape de compilation, pour que
+  l'on puisse le lire et le modifier facilement. Il est publié sous licence GNU AGPL v3 : toute
+  version mise en ligne, même modifiée, doit rester ouverte. Les instructions pour l'installer sont dans le
+  fichier <code>README.md</code> du dépôt.</p>
+<h2>Chantiers ouverts</h2>
+<ul>
+  <li>Une mise en relation plus fine : sens des mots, distance réelle entre les villes,
+    préférences de chaque donateur.</li>
+  <li>Les trajets avec étapes (un don qui passe d'un voyageur à l'autre).</li>
+  <li>Le mot de passe oublié et un récapitulatif quotidien des notifications.</li>
+  <li>Une application mobile.</li>
+  <li>La page de transparence financière pour le don d'argent.</li>
+</ul>
+</div>
+{% endblock %}

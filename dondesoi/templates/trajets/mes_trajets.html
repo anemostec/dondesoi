@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Mes trajets{% endblock %}
+{% block content %}
+<h1>Mes trajets</h1>
+<p class="muted">Indiquez vos déplacements prévus : un don pourra voyager avec vous et éviter des
+  frais d'expédition. Les donateurs vous solliciteront ; vous restez libre d'accepter.</p>
+
+<div class="two-col">
+<div>
+  {% if trajets %}
+  <ul class="list panel">
+    {% for t in trajets %}
+    <li>
+      <strong>{{ t.from_city }} → {{ t.to_city }}</strong> <span class="muted">· le {{ t.date }}</span>
+      {% if t.note %}<div class="small muted">{{ t.note }}</div>{% endif %}
+      <form method="post" action="{{ url_for('trajets.supprimer', trajet_id=t.id) }}" style="margin-top:.3rem">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="linklike small">Supprimer</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Aucun trajet prévu.</p>
+  {% endif %}
+</div>
+<aside>
+  <form class="stack panel" method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h3 style="margin-top:0">Ajouter un trajet</h3>
+    <div><label for="from_city">Départ</label>
+      <input type="text" id="from_city" name="from_city" value="{{ g.user.city }}" required></div>
+    <div><label for="to_city">Arrivée</label>
+      <input type="text" id="to_city" name="to_city" required></div>
+    <div><label for="date">Date</label>
+      <input type="date" id="date" name="date" min="{{ today }}" required></div>
+    <div><label for="note">Précisions <span class="hint">(place disponible…)</span></label>
+      <input type="text" id="note" name="note"></div>
+    <div><button class="btn btn-small">Ajouter</button></div>
+  </form>
+</aside>
+</div>
+{% endblock %}

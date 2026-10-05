@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block title %}Connexion{% endblock %}
+{% block content %}
+<h1>Connexion</h1>
+<form class="stack" method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div><label for="email">E-mail</label><input type="email" id="email" name="email" required></div>
+  <div><label for="password">Mot de passe</label><input type="password" id="password" name="password" required></div>
+  <div><button class="btn">Se connecter</button></div>
+</form>
+<p class="muted">Pas encore membre ? <a href="{{ url_for('auth.inscription') }}">Rejoindre Don de soi</a></p>
+{% endblock %}

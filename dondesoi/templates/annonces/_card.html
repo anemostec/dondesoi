@@ -1,0 +1,16 @@
+{# Carte d'annonce. L'auteur d'un don n'est jamais affiché : le don reste discret. #}
+<article class="card">
+  {% if a.photo %}<img src="{{ url_for('annonces.photo', filename=a.photo) }}" alt="">{% endif %}
+  <div class="tags">
+    <span class="tag tag-{{ a.kind }}">{{ 'Don proposé' if a.kind == 'don' else 'Besoin' }}</span>
+    {% if a.kind == 'besoin' and (a.essential or a.category in ESSENTIAL_CATEGORIES) %}
+      <span class="tag tag-essential">Première nécessité</span>
+    {% endif %}
+    <span class="tag">{{ CATEGORY_LABELS.get(a.category, a.category) }}</span>
+  </div>
+  <h3><a href="{{ url_for('annonces.detail', annonce_id=a.id) }}">{{ a.title }}</a></h3>
+  {% if a.description %}<p class="muted small">{{ a.description|truncate(140) }}</p>{% endif %}
+  <p class="small muted">
+    {% if a.kind == 'besoin' %}{{ a.display_name }}, {% else %}Un membre, {% endif %}{{ a.city }}
+  </p>
+</article>
