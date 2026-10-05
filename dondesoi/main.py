@@ -1,4 +1,4 @@
-from flask import Blueprint, g, render_template
+from flask import Blueprint, abort, current_app, g, render_template, send_from_directory
 
 from .db import get_db
 from .security import login_required
@@ -17,8 +17,34 @@ def accueil():
             "SELECT COUNT(*) FROM annonces WHERE kind='besoin' AND status='ouverte'").fetchone()[0],
         "dons_realises": db.execute(
             "SELECT COUNT(*) FROM dons WHERE status='realise'").fetchone()[0],
+        "prieres": db.execute("SELECT COUNT(*) FROM prieres").fetchone()[0],
     }
-    return render_template("pages/accueil.html", stats=stats)
+    return render_template("pages/accueil.html", stats=stats, graces=actions_grace_publiques(3))
+
+
+def actions_grace_publiques(limit):
+    """Actions de grâce publiées : jamais de nom, seulement la ville du receveur."""
+    return get_db().execute(
+        """SELECT ag.id, ag.body, ag.photo, ag.created_at, u.city
+           FROM actions_grace ag JOIN users u ON u.id = ag.author_id
+           WHERE ag.public = 1 ORDER BY ag.created_at DESC LIMIT ?""",
+        (limit,),
+    ).fetchall()
+
+
+@bp.route("/actions-de-grace")
+def actions_de_grace():
+    return render_template("pages/actions_de_grace.html", graces=actions_grace_publiques(200))
+
+
+@bp.route("/photos/<subdir>/<filename>")
+def photo(subdir, filename):
+    """Photos des annonces, publiques. Celles des messages et des actions de grâce
+    passent par des routes de dons.py qui vérifient qui peut les voir."""
+    if subdir != "annonces":
+        abort(404)
+    return send_from_directory(f"{current_app.config['UPLOAD_FOLDER']}/{subdir}", filename,
+                               max_age=7 * 24 * 3600)
 
 
 @bp.route("/charte")

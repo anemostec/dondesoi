@@ -2,6 +2,7 @@
 {% block title %}Mon espace{% endblock %}
 {% block content %}
 <h1>Bonjour {{ g.user.display_name }}</h1>
+{{ parole_du_jour() }}
 
 {% if not a_des_dons or not a_des_besoins %}
 <div class="panel panel-soft">

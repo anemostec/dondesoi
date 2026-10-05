@@ -1,3 +1,6 @@
+DROP TABLE IF EXISTS actions_grace;
+DROP TABLE IF EXISTS prieres;
+DROP TABLE IF EXISTS annonce_photos;
 DROP TABLE IF EXISTS notifications;
 DROP TABLE IF EXISTS messages;
 DROP TABLE IF EXISTS avis;
@@ -32,7 +35,6 @@ CREATE TABLE annonces (
     description TEXT NOT NULL DEFAULT '',
     city TEXT NOT NULL,
     essential INTEGER NOT NULL DEFAULT 0,
-    photo TEXT,
     status TEXT NOT NULL DEFAULT 'ouverte'
         CHECK (status IN ('ouverte', 'attribuee', 'close')),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -93,7 +95,9 @@ CREATE TABLE messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     don_id INTEGER NOT NULL REFERENCES dons(id) ON DELETE CASCADE,
     author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    body TEXT NOT NULL,
+    body TEXT NOT NULL DEFAULT '',
+    -- Photo jointe, servie seulement aux participants du don.
+    photo TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -106,9 +110,42 @@ CREATE TABLE notifications (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Photos d'une annonce (6 au plus), dans l'ordre d'affichage.
+CREATE TABLE annonce_photos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    annonce_id INTEGER NOT NULL REFERENCES annonces(id) ON DELETE CASCADE,
+    filename TEXT NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- « Je prie pour vous » : un membre porte un besoin dans la prière (Mt 18,19-20).
+CREATE TABLE prieres (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    annonce_id INTEGER NOT NULL REFERENCES annonces(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (annonce_id, user_id)
+);
+
+-- Action de grâce du receveur après un don (Lc 17,15). Le mot est toujours
+-- transmis au donateur ; il n'est publié (sans aucun nom) que si le receveur le souhaite.
+CREATE TABLE actions_grace (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    don_id INTEGER UNIQUE NOT NULL REFERENCES dons(id) ON DELETE CASCADE,
+    author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body TEXT NOT NULL,
+    photo TEXT,
+    public INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+CREATE INDEX idx_annonce_photos ON annonce_photos (annonce_id, position);
+CREATE INDEX idx_actions_grace_public ON actions_grace (public, created_at);
+
 CREATE INDEX idx_messages_don ON messages (don_id);
 CREATE INDEX idx_notifications_user ON notifications (user_id, read_at);
 CREATE INDEX idx_annonces_open ON annonces (kind, status);
 CREATE INDEX idx_trajets_date ON trajets (date);
 
-PRAGMA user_version = 1;
+PRAGMA user_version = 2;

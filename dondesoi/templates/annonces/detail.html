@@ -11,19 +11,33 @@
     {% if annonce.status != 'ouverte' %}<span class="tag">{{ 'attribuée' if annonce.status == 'attribuee' else 'clôturée' }}</span>{% endif %}
   </div>
   <h1>{{ annonce.title }}</h1>
-  {% if annonce.photo %}<img src="{{ url_for('annonces.photo', filename=annonce.photo) }}" alt="" style="border-radius:8px;max-height:420px">{% endif %}
+  {% if photos %}
+  <div class="gallery">
+    {% for p in photos %}
+      <a href="{{ url_for('main.photo', subdir='annonces', filename=p.filename) }}" target="_blank" rel="noopener"
+         class="{{ 'gallery-main' if loop.first }}">
+        <img src="{{ url_for('main.photo', subdir='annonces', filename=p.filename if loop.first else p.filename|thumb) }}"
+             alt="Photo {{ loop.index }} de l'annonce" loading="lazy">
+      </a>
+    {% endfor %}
+  </div>
+  {% endif %}
   {% if annonce.description %}<p style="white-space:pre-line">{{ annonce.description }}</p>{% endif %}
   <p class="muted">
-    {% if annonce.kind == 'besoin' %}
-      {% if g.user %}<a href="{{ url_for('auth.membre', user_id=auteur.id) }}">{{ auteur.display_name }}</a>{% else %}{{ auteur.display_name }}{% endif %},
-    {% else %}Proposé par un membre, {% endif %}{{ annonce.city }}
+    {% if annonce.kind == 'besoin' and g.user %}
+      <a href="{{ url_for('auth.membre', user_id=auteur.id) }}">{{ auteur.display_name }}</a>,
+    {% elif annonce.kind == 'besoin' %}Un membre, {% else %}Proposé par un membre, {% endif %}{{ annonce.city }}
   </p>
+  {% if annonce.kind == 'besoin' and nb_prieres %}
+    <p class="small muted">{{ nb_prieres }} membre{{ 's' if nb_prieres > 1 }} porte{{ 'nt' if nb_prieres > 1 }} cette intention dans la prière.</p>
+  {% endif %}
 
   {# Le donateur voit les receveurs proposés pour son don. #}
   {% if candidats is defined %}
   <h2>Receveurs proposés</h2>
   <p class="muted small">Classés par priorité : les besoins de première nécessité d'abord, puis la
     pertinence. Vous restez seul à décider.</p>
+  {{ verset('plus_petits') }}
   {% if candidats %}
   <ul class="list panel">
     {% for c in candidats %}
@@ -67,6 +81,7 @@
   {% elif is_owner %}
     <p class="muted small">C'est votre annonce.</p>
     {% if annonce.status != 'close' %}
+    <p><a class="btn btn-small btn-ghost" href="{{ url_for('annonces.modifier', annonce_id=annonce.id) }}">Modifier / ajouter des photos</a></p>
     <form method="post" action="{{ url_for('annonces.cloturer', annonce_id=annonce.id) }}">
       <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
       <button class="btn btn-small btn-danger">Clôturer l'annonce</button>
@@ -91,7 +106,19 @@
       </form>
     {% endif %}
   {% else %}
-    <h3 style="margin-top:0">Répondre à ce besoin</h3>
+    <h3 style="margin-top:0">Porter ce besoin dans la prière</h3>
+    <form method="post" action="{{ url_for('annonces.priere', annonce_id=annonce.id) }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      {% if je_prie %}
+        <input type="hidden" name="retirer" value="1">
+        <p class="small">Vous priez pour cette intention.</p>
+        <button class="linklike small">Ne plus l'indiquer</button>
+      {% else %}
+        <button class="btn btn-small btn-olive">Je prie pour vous</button>
+      {% endif %}
+    </form>
+    {{ verset('accord_priere', 'verse verse-small') }}
+    <h3>Répondre à ce besoin</h3>
     {% if mes_offres %}
       <form class="stack" method="get" action="{{ url_for('dons.preparer') }}">
         <input type="hidden" name="receveur" value="{{ auteur.id }}">

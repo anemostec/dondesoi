@@ -8,6 +8,7 @@
 
 <div class="two-col">
 <div>
+  {% if don.cover %}<img class="don-cover" src="{{ url_for('main.photo', subdir='annonces', filename=don.cover|thumb) }}" alt="">{% endif %}
   {% if don.description %}<p style="white-space:pre-line">{{ don.description }}</p>{% endif %}
 
   <div class="panel panel-soft">
@@ -90,17 +91,24 @@
     {% for m in messages %}
       <div class="msg {{ 'msg-mine' if m.mine }}">
         <div class="small muted"><strong>{{ m.label }}</strong> · {{ m.created_at|heure }}</div>
-        <div style="white-space:pre-line">{{ m.body }}</div>
+        {% if m.body %}<div style="white-space:pre-line">{{ m.body }}</div>{% endif %}
+        {% if m.photo %}
+          <a href="{{ url_for('dons.message_photo', don_id=don.id, message_id=m.id) }}" target="_blank" rel="noopener">
+            <img class="msg-photo" src="{{ url_for('dons.message_photo', don_id=don.id, message_id=m.id, t=1) }}" alt="Photo jointe" loading="lazy">
+          </a>
+        {% endif %}
       </div>
     {% else %}
       <p class="muted small">Aucun message pour l'instant.</p>
     {% endfor %}
   </div>
   {% if can_write %}
-  <form class="stack" method="post" action="{{ url_for('dons.message', don_id=don.id) }}" style="margin-top:.8rem">
+  <form class="stack" method="post" enctype="multipart/form-data" action="{{ url_for('dons.message', don_id=don.id) }}" style="margin-top:.8rem">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <label for="msg-body" class="sr-only">Votre message</label>
-    <textarea id="msg-body" name="body" required style="min-height:4rem" placeholder="Votre message…"></textarea>
+    <textarea id="msg-body" name="body" style="min-height:4rem" placeholder="Votre message…"></textarea>
+    <div><label for="msg-photo" class="hint">Joindre une photo <span class="hint">(visible seulement par les participants de ce don)</span></label>
+      <input type="file" id="msg-photo" name="photo" accept="image/*"></div>
     <div><button class="btn btn-small">Envoyer</button></div>
   </form>
   {% endif %}
@@ -109,12 +117,52 @@
 <aside>
   {% if don.status == 'realise' and (is_donor or is_receiver) %}
   <div class="panel">
-    <h3 style="margin-top:0">Avis</h3>
+    <h3 style="margin-top:0">Rendre grâce</h3>
+    {% if grace %}
+      <div class="grace">
+        <p style="white-space:pre-line">{{ grace.body }}</p>
+        {% if grace.photo %}<img src="{{ url_for('dons.grace_photo', grace_id=grace.id, t=1) }}" alt="" loading="lazy">{% endif %}
+        <p class="small muted">{{ 'Publiée, sans aucun nom, sur la page « Actions de grâce ».' if grace.public else 'Visible seulement par le donateur.' }}</p>
+      </div>
+      {% if is_receiver and grace.public %}
+      <form method="post" action="{{ url_for('dons.depublier_grace', don_id=don.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="linklike small">Ne plus la publier</button>
+      </form>
+      {% endif %}
+    {% elif is_receiver %}
+      {{ verset('lepreux', 'verse verse-small') }}
+      <form class="stack" method="post" enctype="multipart/form-data" action="{{ url_for('dons.rendre_grace', don_id=don.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label for="grace-body">Un mot pour votre donateur</label>
+        <textarea id="grace-body" name="body" required style="min-height:5rem"></textarea>
+        <div><label for="grace-photo" class="hint">Une photo <span class="hint">(facultatif)</span></label>
+          <input type="file" id="grace-photo" name="photo" accept="image/*"></div>
+        <label class="check"><input type="checkbox" name="public" value="1">
+          <span>Publier aussi ce mot, sans aucun nom, pour rendre gloire à Dieu
+            <span class="hint">(page « Actions de grâce », seule votre ville est indiquée ; ne nommez personne)</span></span></label>
+        <div><button class="btn btn-small">Rendre grâce</button></div>
+      </form>
+    {% else %}
+      <p class="muted small">Le receveur n'a pas encore écrit. Vous n'attendez rien en retour :
+        « Prêtez sans rien espérer » (Lc 6,35).</p>
+    {% endif %}
+  </div>
+
+  <div class="panel">
+    <h3 style="margin-top:0">Avis fraternel</h3>
     {% if avis %}
       <div class="avis">
         <p>{{ avis.body }}</p>
         {% if avis.reply %}<div class="reply"><strong>Réponse :</strong> {{ avis.reply }}</div>{% endif %}
       </div>
+      {% if is_donor %}
+      <form method="post" action="{{ url_for('dons.retirer_avis', don_id=don.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="linklike small">Retirer mon avis</button>
+      </form>
+      {{ verset('septante_fois_sept', 'verse verse-small') }}
+      {% endif %}
       {% if is_receiver and not avis.reply %}
       <form class="stack" method="post" action="{{ url_for('dons.avis', don_id=don.id) }}">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
@@ -126,8 +174,11 @@
     {% elif is_donor %}
       <form class="stack" method="post" action="{{ url_for('dons.avis', don_id=don.id) }}">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-        <p class="hint">Avec bienveillance et objectivité : votre avis aidera les prochains
-          donateurs. Le receveur pourra y répondre.</p>
+        {{ verset('ne_jugez_point', 'verse verse-small') }}
+        <p class="hint">Un avis n'est pas obligatoire. S'il y a eu une difficulté, parlez-en d'abord
+          avec le receveur dans les messages (Mt 18,15). Écrivez avec bienveillance et objectivité,
+          seulement ce qui aidera les prochains donateurs. Le receveur pourra répondre, et vous
+          pourrez retirer votre avis à tout moment.</p>
         <textarea id="body" name="body" style="min-height:5rem" required></textarea>
         <div><button class="btn btn-small">Publier l'avis</button></div>
       </form>

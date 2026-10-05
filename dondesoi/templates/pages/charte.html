@@ -3,44 +3,73 @@
 {% block content %}
 <div class="prose">
 <h1>La charte de Don de soi</h1>
+{{ verset('servir') }}
 
 <h2>Fondement</h2>
 <p>Don de soi est un système de communication chrétien (site web, application, réseaux sociaux)
   qui a pour vocation de mettre en relation ses membres et de faciliter le don entre eux.</p>
-<p>Par le don, Don de soi veut essayer de vivre comme Jésus-Christ, et fonder une grande famille
-  sur laquelle on peut compter.</p>
+<p>Par le don, Don de soi veut essayer de vivre comme Jésus-Christ, qui s'est donné lui-même, et
+  fonder une grande famille sur laquelle on peut compter.</p>
+{{ verset('famille') }}
 <p>Don de soi ne fait pas de prosélytisme : chacun reste entièrement libre de ses convictions. Le
   seul prosélytisme est silencieux : c'est l'exemple de vie de chacun.</p>
+{{ verset('temoignage_silencieux') }}
 <p>Don de soi n'a aucun but lucratif.</p>
 <p>Chacun est à la fois donneur et receveur. Le don peut prendre toutes les formes possibles,
   selon les besoins et les demandes de chacun. Chacun est capable de donner, même les plus
-  pauvres : du temps pour un coup de main, une prière, une écoute…</p>
+  pauvres : du temps pour un coup de main, une visite, une prière, une écoute…</p>
+{{ verset('veuve') }}
 <p>Le don est vraiment un don de soi : le donneur n'attend rien en retour du receveur. Le don est
   entièrement et définitivement gratuit.</p>
+{{ verset('sans_rien_esperer') }}
+
+<h2>Les plus petits d'abord</h2>
+<p>Les besoins de première nécessité passent toujours en premier. Ce sont les œuvres que le Christ
+  a nommées : nourrir, donner à boire, accueillir l'étranger, vêtir, soigner, visiter le malade et
+  le prisonnier.</p>
+{{ verset('jai_eu_faim') }}
 
 <h2>Principe de fonctionnement</h2>
-<p>Chaque membre publie ce qu'il souhaite donner, et surtout ce qu'il souhaite recevoir. Chacun
-  donne et reçoit selon ses moyens, ses compétences et son temps.</p>
-<p>Un système de mise en relation propose automatiquement aux donateurs les receveurs potentiels,
-  en mettant toujours en premier les besoins de première nécessité. Les membres indiquent aussi
-  leurs déplacements prévus, pour que les dons voyagent sans frais d'expédition.</p>
+<p>Chaque membre publie ce qu'il souhaite donner, et surtout ce qu'il souhaite recevoir, avec des
+  photos s'il le souhaite. Chacun donne et reçoit selon ses moyens, ses compétences et son temps.</p>
+<p>Un système de mise en relation propose automatiquement aux donateurs les receveurs potentiels.
+  Les membres indiquent aussi leurs déplacements prévus, pour que les dons voyagent sans frais
+  d'expédition.</p>
+{{ verset('samaritain') }}
 
-<h2>La transaction</h2>
+<h2>Le don dans le secret</h2>
 <p>Le donateur voit les informations publiées par les receveurs potentiels et les avis laissés
   à leur sujet. <strong>Il est seul à décider</strong> à qui il donne.</p>
-<p>Le receveur ne voit du donateur que ce que celui-ci choisit de partager, et seulement une fois
-  le don engagé.</p>
+<p>Le nom du donateur n'apparaît jamais : ni sur ses annonces, ni dans les messages. Le receveur ne
+  voit de lui que ce qu'il choisit de partager, et seulement une fois le don engagé.</p>
+{{ verset('main_gauche') }}
 
-<h2>Abus de générosité</h2>
+<h2>Prier les uns pour les autres</h2>
+<p>Chaque membre peut porter le besoin d'un autre dans la prière. Celui qui a exprimé ce besoin
+  sait qu'il n'est pas seul.</p>
+{{ verset('accord_priere') }}
+
+<h2>Rendre grâce</h2>
+<p>Après un don, le receveur peut rendre grâce. Son mot est transmis au donateur et, s'il le
+  souhaite, publié sans aucun nom : la gloire en revient à Dieu, non au donateur.</p>
+{{ verset('lepreux') }}
+
+<h2>Abus de générosité, litiges et pardon</h2>
 <p>Les dons sont par nature limités : des demandes déraisonnables privent d'autres personnes dans
   le besoin. Après chaque don, le donateur peut laisser un avis sur le receveur, avec
   bienveillance et objectivité ; le receveur peut y répondre. Ces avis éclairent les donateurs
   suivants, qui restent libres de donner même si les apparences sont défavorables.</p>
+{{ verset('ne_jugez_point') }}
+<p>En cas de difficulté, on commence par en parler en frère, seul à seul, dans les messages du don.
+  Le donateur peut retirer son avis à tout moment : le pardon est toujours possible.</p>
+{{ verset('reprendre_son_frere') }}
+{{ verset('septante_fois_sept') }}
 
 <h2>Argent et publicité</h2>
 <p>Le don d'argent entre membres n'est pas permis. Voir la page
   <a href="{{ url_for('main.don_argent') }}">Don d'argent</a>. Aucune publicité n'est acceptée ;
   seuls des partenaires qui fournissent leurs solutions gratuitement sont mentionnés, sur la page
   <a href="{{ url_for('main.partenaires') }}">Partenaires</a>.</p>
+{{ verset('mammon') }}
 </div>
 {% endblock %}

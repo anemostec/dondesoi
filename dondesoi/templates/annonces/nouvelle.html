@@ -1,15 +1,18 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Proposer un don' if kind == 'don' else 'Exprimer un besoin' }}{% endblock %}
+{% set edition = annonce is not none %}
+{% block title %}{{ 'Modifier l\'annonce' if edition else ('Proposer un don' if kind == 'don' else 'Exprimer un besoin') }}{% endblock %}
 {% block content %}
-<h1>{{ 'Je propose un don' if kind == 'don' else "J'exprime un besoin" }}</h1>
-<p class="muted">
+<h1>{% if edition %}Modifier l'annonce{% else %}{{ 'Je propose un don' if kind == 'don' else "J'exprime un besoin" }}{% endif %}</h1>
+{% if not edition %}
   {% if kind == 'don' %}
-    Tout peut être un don : un objet, un service, du temps, une écoute, une prière.
-    Votre nom ne sera pas affiché sur l'annonce.
+    {{ verset('veuve') }}
+    <p class="muted">Tout peut être un don : un objet, un service, du temps, une écoute, une prière.
+      Le plus petit don compte. Votre nom ne sera pas affiché sur l'annonce.</p>
   {% else %}
-    Dites simplement ce dont vous avez besoin. Recevoir permet à un autre de donner.
+    {{ verset('demandez') }}
+    <p class="muted">Dites simplement ce dont vous avez besoin. Recevoir permet à un autre de donner.</p>
   {% endif %}
-</p>
+{% endif %}
 
 <form class="stack" method="post" enctype="multipart/form-data">
   <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
@@ -37,16 +40,35 @@
   </div>
   {% if kind == 'besoin' %}
   <label class="check">
-    <input type="checkbox" name="essential" value="1" {{ 'checked' if form.essential }}>
-    <span>C'est un besoin de première nécessité (se nourrir, se loger, se vêtir, se soigner…).
-      <span class="hint">Il sera présenté en priorité aux donateurs.</span></span>
+    <input type="checkbox" name="essential" value="1" {{ 'checked' if form.essential and form.essential != '0' }}>
+    <span>C'est un besoin de première nécessité (se nourrir, se loger, se vêtir, se soigner, ne plus
+      être seul…). <span class="hint">Il sera présenté en priorité aux donateurs.</span></span>
   </label>
   {% endif %}
+
+  {% if photos %}
+  <fieldset class="panel panel-soft" style="margin:0">
+    <legend><strong>Photos actuelles</strong></legend>
+    <div class="photo-edit">
+      {% for p in photos %}
+      <label class="photo-edit-item">
+        <img src="{{ url_for('main.photo', subdir='annonces', filename=p.filename|thumb) }}" alt="">
+        <span class="check"><input type="checkbox" name="supprimer_photo" value="{{ p.id }}"> Supprimer</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% endif %}
   <div>
-    <label for="photo">Photo <span class="hint">(facultatif)</span></label>
-    <input type="file" id="photo" name="photo" accept="image/*">
+    <label for="photos">{{ 'Ajouter des photos' if edition else 'Photos' }}
+      <span class="hint">(facultatif, {{ max_photos }} au plus{% if photos %}, {{ max_photos - photos|length }} encore possible{{ 's' if max_photos - photos|length > 1 }}{% endif %})</span></label>
+    <input type="file" id="photos" name="photos" accept="image/*" multiple>
+    <p class="hint">Les photos sont réduites et leurs données cachées (position GPS, appareil…) sont effacées.</p>
   </div>
   <p class="hint">Rappel : le don d'argent entre membres n'est pas permis.</p>
-  <div><button class="btn">Publier</button></div>
+  <div class="actions">
+    <button class="btn">{{ 'Enregistrer' if edition else 'Publier' }}</button>
+    {% if edition %}<a class="btn btn-ghost" href="{{ url_for('annonces.detail', annonce_id=annonce.id) }}">Annuler</a>{% endif %}
+  </div>
 </form>
 {% endblock %}

@@ -12,6 +12,7 @@ from flask import Flask
 
 # Catégories de dons et de besoins. Le troisième champ indique un besoin
 # de première nécessité : ces demandes sont mises en relation en priorité.
+# Ce sont les œuvres de Mt 25,35-36 : nourrir, accueillir, vêtir, soigner, visiter.
 # Il n'y a volontairement pas de catégorie « argent » : le don d'argent
 # entre membres n'est pas permis (voir la page « Don d'argent »).
 CATEGORIES = [
@@ -19,6 +20,7 @@ CATEGORIES = [
     ("logement", "Logement / hébergement", True),
     ("vetements", "Vêtements", True),
     ("soins", "Santé / soins", True),
+    ("visite", "Visite (personne seule, malade, détenue)", True),
     ("objet", "Objet", False),
     ("service", "Service / coup de main", False),
     ("temps", "Temps / présence", False),
@@ -48,7 +50,8 @@ def create_app(test_config=None):
     app.config.from_mapping(
         DATABASE=os.path.join(app.instance_path, "dondesoi.sqlite"),
         UPLOAD_FOLDER=os.path.join(app.instance_path, "uploads"),
-        MAX_CONTENT_LENGTH=5 * 1024 * 1024,
+        # Plusieurs photos de téléphone par envoi ; elles sont ensuite réduites.
+        MAX_CONTENT_LENGTH=40 * 1024 * 1024,
         MAIL_BACKEND="console",
         MAIL_FROM="Don de soi <ne-pas-repondre@dondesoi.local>",
         # Lien vers le code source, que l'AGPL demande d'offrir aux utilisateurs.
@@ -78,11 +81,25 @@ def create_app(test_config=None):
     app.register_blueprint(trajets.bp)
     app.register_blueprint(notifications.bp)
 
+    from .photos import thumb_name
+    app.jinja_env.filters["thumb"] = thumb_name
+
     @app.template_filter("heure")
     def heure(value):
         """Les dates sont stockées en UTC (datetime('now') de SQLite)."""
         utc = datetime.fromisoformat(value).replace(tzinfo=timezone.utc)
         return utc.astimezone(ZoneInfo(app.config["TIMEZONE"])).strftime("%d/%m/%Y %H:%M")
+
+    from markupsafe import Markup, escape
+
+    from .evangile import parole_du_jour, passage
+
+    def render_passage(p, css="verse"):
+        return Markup('<blockquote class="{}"><p>« {} »</p><cite>{}</cite></blockquote>').format(
+            css, escape(p["text"]), escape(p["ref"]))
+
+    app.jinja_env.globals["verset"] = lambda key, css="verse": render_passage(passage(key), css)
+    app.jinja_env.globals["parole_du_jour"] = lambda: render_passage(parole_du_jour(), "verse verse-jour")
 
     @app.context_processor
     def inject_constants():

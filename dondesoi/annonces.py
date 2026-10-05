@@ -1,14 +1,13 @@
-import os
 import re
-import uuid
 
-from flask import (Blueprint, abort, current_app, flash, g, redirect, render_template,
-                   request, send_from_directory, url_for)
+from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
 from . import CATEGORY_LABELS, ESSENTIAL_CATEGORIES
 from .db import get_db
 from .matching import candidats_pour_offre, is_essential, offres_pour_besoin
 from .notifications import notify
+from .photos import (COVER_SQL, MAX_PHOTOS_PAR_ANNONCE, PhotoInvalide, delete_photo,
+                     save_photos)
 from .security import login_required
 
 bp = Blueprint("annonces", __name__, url_prefix="/annonces")
@@ -17,8 +16,6 @@ bp = Blueprint("annonces", __name__, url_prefix="/annonces")
 # (une catégorie commune seule vaut 3 : il faut au moins un autre indice).
 NOTIFY_MIN_SCORE = 4
 NOTIFY_MAX = 10
-
-PHOTO_EXTENSIONS = {"jpg", "jpeg", "png", "webp", "gif"}
 
 # Le don d'argent entre membres n'est pas permis (charte, « Don d'argent »).
 MONEY_PATTERN = re.compile(
@@ -35,14 +32,48 @@ def get_annonce(annonce_id):
     return annonce
 
 
+def get_photos(annonce_id):
+    return get_db().execute(
+        "SELECT * FROM annonce_photos WHERE annonce_id = ? ORDER BY position, id", (annonce_id,),
+    ).fetchall()
+
+
+def add_photos(db, annonce_id, filenames):
+    start = db.execute("SELECT COALESCE(MAX(position), -1) + 1 FROM annonce_photos "
+                       "WHERE annonce_id = ?", (annonce_id,)).fetchone()[0]
+    db.executemany(
+        "INSERT INTO annonce_photos (annonce_id, filename, position) VALUES (?, ?, ?)",
+        [(annonce_id, name, start + i) for i, name in enumerate(filenames)],
+    )
+
+
+def validate_form(form):
+    """Vérifie les champs communs à la création et à la modification."""
+    title = form.get("title", "").strip()
+    if not title:
+        return "Merci de donner un titre à votre annonce."
+    if form.get("category", "") not in CATEGORY_LABELS:
+        return "Merci de choisir une catégorie."
+    if MONEY_PATTERN.search(title + " " + form.get("description", "")):
+        return ("Le don d'argent entre membres n'est pas permis. Vous pouvez soutenir la "
+                "communauté via la page « Don d'argent ».")
+    return None
+
+
+def essential_from_form(kind, form):
+    return int(kind == "besoin" and (form.get("essential") == "1"
+                                     or form.get("category") in ESSENTIAL_CATEGORIES))
+
+
 @bp.route("/")
 def liste():
     kind = request.args.get("type", "")
     category = request.args.get("categorie", "")
     q = request.args.get("q", "").strip()
 
-    sql = ["SELECT a.*, u.display_name FROM annonces a JOIN users u ON u.id = a.user_id "
-           "WHERE a.status = 'ouverte'"]
+    sql = [f"SELECT a.*, u.display_name, {COVER_SQL}, "
+           "(SELECT COUNT(*) FROM prieres p WHERE p.annonce_id = a.id) AS nb_prieres "
+           "FROM annonces a JOIN users u ON u.id = a.user_id WHERE a.status = 'ouverte'"]
     params = []
     if kind in ("don", "besoin"):
         sql.append("AND a.kind = ?")
@@ -71,46 +102,79 @@ def nouvelle():
         kind = "don"
     form = request.form
     if request.method == "POST":
-        title = form.get("title", "").strip()
-        description = form.get("description", "").strip()
-        category = form.get("category", "")
-        city = form.get("city", "").strip() or g.user["city"]
-        error = None
-        if not title:
-            error = "Merci de donner un titre à votre annonce."
-        elif category not in CATEGORY_LABELS:
-            error = "Merci de choisir une catégorie."
-        elif MONEY_PATTERN.search(title + " " + description):
-            error = ("Le don d'argent entre membres n'est pas permis. Vous pouvez soutenir la "
-                     "communauté via la page « Don d'argent ».")
-
-        photo_name = None
-        photo = request.files.get("photo")
-        if error is None and photo and photo.filename:
-            ext = photo.filename.rsplit(".", 1)[-1].lower() if "." in photo.filename else ""
-            if ext not in PHOTO_EXTENSIONS:
-                error = "Format de photo non accepté (jpg, png, webp, gif)."
-            else:
-                photo_name = f"{uuid.uuid4().hex}.{ext}"
-                photo.save(os.path.join(current_app.config["UPLOAD_FOLDER"], photo_name))
+        error = validate_form(form)
+        filenames = []
+        if error is None:
+            try:
+                filenames = save_photos(request.files.getlist("photos"))
+            except PhotoInvalide as e:
+                error = str(e)
 
         if error is None:
-            essential = kind == "besoin" and (form.get("essential") == "1"
-                                              or category in ESSENTIAL_CATEGORIES)
             db = get_db()
             cur = db.execute(
                 """INSERT INTO annonces (user_id, kind, category, title, description, city,
-                                         essential, photo)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (g.user["id"], kind, category, title, description, city, int(essential), photo_name),
+                                         essential)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (g.user["id"], kind, form["category"], form["title"].strip(),
+                 form.get("description", "").strip(),
+                 form.get("city", "").strip() or g.user["city"], essential_from_form(kind, form)),
             )
+            add_photos(db, cur.lastrowid, filenames)
             db.commit()
             notifier_correspondances(db, cur.lastrowid)
             flash("Merci ! Votre don est publié." if kind == "don"
                   else "Votre besoin est publié. Recevoir est aussi une façon de laisser l'autre donner.")
             return redirect(url_for("annonces.detail", annonce_id=cur.lastrowid))
         flash(error, "erreur")
-    return render_template("annonces/nouvelle.html", kind=kind, form=form)
+    return render_template("annonces/nouvelle.html", kind=kind, form=form, annonce=None,
+                           photos=[], max_photos=MAX_PHOTOS_PAR_ANNONCE)
+
+
+@bp.route("/<int:annonce_id>/modifier", methods=("GET", "POST"))
+@login_required
+def modifier(annonce_id):
+    annonce = get_annonce(annonce_id)
+    if annonce["user_id"] != g.user["id"]:
+        abort(403)
+    if annonce["status"] == "close":
+        flash("Une annonce clôturée ne peut plus être modifiée.", "erreur")
+        return redirect(url_for("annonces.detail", annonce_id=annonce_id))
+    photos = get_photos(annonce_id)
+    form = request.form if request.method == "POST" else annonce
+
+    if request.method == "POST":
+        error = validate_form(form)
+        to_delete = {int(i) for i in request.form.getlist("supprimer_photo") if i.isdigit()}
+        remaining = len([p for p in photos if p["id"] not in to_delete])
+        filenames = []
+        if error is None:
+            try:
+                filenames = save_photos(request.files.getlist("photos"),
+                                        limit=MAX_PHOTOS_PAR_ANNONCE - remaining)
+            except PhotoInvalide as e:
+                error = str(e) if remaining == 0 else (
+                    f"{e} Cette annonce a déjà {remaining} photo(s) sur {MAX_PHOTOS_PAR_ANNONCE}.")
+        if error is None:
+            db = get_db()
+            db.execute(
+                """UPDATE annonces SET title = ?, description = ?, category = ?, city = ?,
+                                       essential = ? WHERE id = ?""",
+                (form["title"].strip(), form.get("description", "").strip(), form["category"],
+                 form.get("city", "").strip() or g.user["city"],
+                 essential_from_form(annonce["kind"], form), annonce_id),
+            )
+            for p in photos:
+                if p["id"] in to_delete:
+                    db.execute("DELETE FROM annonce_photos WHERE id = ?", (p["id"],))
+                    delete_photo(p["filename"])
+            add_photos(db, annonce_id, filenames)
+            db.commit()
+            flash("Annonce mise à jour.")
+            return redirect(url_for("annonces.detail", annonce_id=annonce_id))
+        flash(error, "erreur")
+    return render_template("annonces/nouvelle.html", kind=annonce["kind"], form=form,
+                           annonce=annonce, photos=photos, max_photos=MAX_PHOTOS_PAR_ANNONCE)
 
 
 def notifier_correspondances(db, annonce_id):
@@ -139,7 +203,10 @@ def detail(annonce_id):
     annonce = get_annonce(annonce_id)
     auteur = db.execute("SELECT * FROM users WHERE id = ?", (annonce["user_id"],)).fetchone()
     is_owner = g.user is not None and g.user["id"] == annonce["user_id"]
-    ctx = {"annonce": annonce, "auteur": auteur, "is_owner": is_owner}
+    ctx = {"annonce": annonce, "auteur": auteur, "is_owner": is_owner,
+           "photos": get_photos(annonce_id),
+           "nb_prieres": db.execute("SELECT COUNT(*) FROM prieres WHERE annonce_id = ?",
+                                    (annonce_id,)).fetchone()[0]}
 
     if annonce["kind"] == "don" and is_owner and annonce["status"] == "ouverte":
         ctx["candidats"] = candidats_pour_offre(db, annonce)
@@ -156,7 +223,35 @@ def detail(annonce_id):
             "SELECT * FROM annonces WHERE user_id = ? AND kind = 'don' AND status = 'ouverte'",
             (g.user["id"],),
         ).fetchall()
+        ctx["je_prie"] = db.execute(
+            "SELECT 1 FROM prieres WHERE annonce_id = ? AND user_id = ?",
+            (annonce_id, g.user["id"]),
+        ).fetchone() is not None
     return render_template("annonces/detail.html", **ctx)
+
+
+@bp.route("/<int:annonce_id>/priere", methods=("POST",))
+@login_required
+def priere(annonce_id):
+    """« Je prie pour vous » : porter le besoin d'un autre membre dans la prière."""
+    annonce = get_annonce(annonce_id)
+    if annonce["kind"] != "besoin" or annonce["user_id"] == g.user["id"]:
+        abort(400)
+    db = get_db()
+    if request.form.get("retirer"):
+        db.execute("DELETE FROM prieres WHERE annonce_id = ? AND user_id = ?",
+                   (annonce_id, g.user["id"]))
+        db.commit()
+    else:
+        cur = db.execute("INSERT OR IGNORE INTO prieres (annonce_id, user_id) VALUES (?, ?)",
+                         (annonce_id, g.user["id"]))
+        db.commit()
+        if cur.rowcount:
+            notify(annonce["user_id"],
+                   f"Un membre porte votre besoin « {annonce['title']} » dans la prière.",
+                   url_for("annonces.detail", annonce_id=annonce_id))
+            flash("Merci de porter cette intention dans votre prière.")
+    return redirect(url_for("annonces.detail", annonce_id=annonce_id))
 
 
 @bp.route("/<int:annonce_id>/interet", methods=("POST",))
@@ -195,8 +290,3 @@ def cloturer(annonce_id):
     db.commit()
     flash("Annonce clôturée.")
     return redirect(url_for("main.tableau_de_bord"))
-
-
-@bp.route("/photo/<path:filename>")
-def photo(filename):
-    return send_from_directory(current_app.config["UPLOAD_FOLDER"], filename)

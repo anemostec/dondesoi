@@ -17,6 +17,7 @@ import unicodedata
 from datetime import date
 
 from . import CATEGORY_LABELS, ESSENTIAL_CATEGORIES
+from .photos import COVER_SQL
 
 STOPWORDS = set("""
 a au aux avec ce ces cet cette dans de des du elle en et eux il ils je la le les
@@ -147,8 +148,8 @@ def candidats_pour_offre(db, offre, limit=30):
 def offres_pour_besoin(db, besoin, limit=10):
     """Dons proposés qui pourraient répondre à un besoin."""
     offres = db.execute(
-        """SELECT * FROM annonces
-           WHERE kind = 'don' AND status = 'ouverte' AND user_id != ?""",
+        f"""SELECT a.*, {COVER_SQL} FROM annonces a
+            WHERE a.kind = 'don' AND a.status = 'ouverte' AND a.user_id != ?""",
         (besoin["user_id"],),
     ).fetchall()
     scored = []

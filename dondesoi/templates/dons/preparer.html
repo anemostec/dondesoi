@@ -2,6 +2,7 @@
 {% block title %}Donner{% endblock %}
 {% block content %}
 <h1>Donner « {{ offre.title }} » à {{ receiver.display_name }}</h1>
+{{ verset('main_gauche') }}
 
 <div class="two-col">
 <div>
@@ -46,6 +47,7 @@
       <p class="muted small">Aucun avis.</p>
     {% endfor %}
     <p class="hint">Les avis éclairent votre choix ; ils ne l'empêchent jamais.</p>
+    {{ verset('donne_a_qui_demande', 'verse verse-small') }}
   </div>
 </aside>
 </div>

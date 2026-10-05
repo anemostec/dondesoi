@@ -17,6 +17,13 @@ L'esprit du projet est décrit dans `../don_de_soi.tex` et sur la page « Charte
 | Le receveur ne voit que ce que le donateur partage, après le don | L'auteur d'un don n'est jamais affiché ; le receveur ne voit que le champ `shared_info` |
 | Messagerie dans la même discrétion | Fil de discussion par don ; le donateur y apparaît comme « le donateur » (`dons.py`) |
 | Faciliter les mises en relation | Notifications (cloche + e-mail facultatif) : correspondance don/besoin, intérêt signalé, don reçu, message, transport, avis (`notifications.py`) |
+| Photos | Jusqu'à 6 photos par annonce, ajoutées ou retirées à tout moment ; photos dans les messages (privées) et les actions de grâce. Réencodées : métadonnées et GPS effacés (`photos.py`) |
+| Prier les uns pour les autres (Mt 18,19-20) | Bouton « Je prie pour vous » sur chaque besoin, la personne en est prévenue |
+| Rendre grâce (Lc 17,15) | Après un don, mot du receveur au donateur, publiable sans aucun nom (page « Actions de grâce ») |
+| Ne pas juger, reprendre en frère, pardonner (Mt 7,1 ; 18,15.22) | Avis facultatif, précédé d'une invitation à se parler ; le donateur peut le retirer à tout moment |
+| Les œuvres de miséricorde (Mt 25,35-36) | Catégorie « Visite » (personne seule, malade, détenue) ajoutée aux besoins prioritaires |
+| Dignité de celui qui demande | Le nom de l'auteur d'un besoin n'est visible que des membres |
+| L'Évangile au cœur du site | Passages placés là où ils éclairent le geste, « Parole du jour » (`evangile.py`, Louis Segond 1910, domaine public) |
 | Trajets pour éviter les frais d'expédition | `trajets.py` + proposition des voyageurs de la ville du donateur vers celle du receveur |
 | Avis après le don, droit de réponse, sans blocage | Table `avis` ; visibles sur le profil du receveur ; ils n'empêchent jamais un don |
 | Pas de prosélytisme, liberté de partir | Pages « Charte » et « À qui s'adresse Don de soi » |
@@ -64,6 +71,8 @@ dondesoi/
   annonces.py      dons et besoins
   dons.py          transaction, messagerie, transport, avis
   notifications.py notifications et e-mails
+  photos.py        traitement des photos (Pillow)
+  evangile.py      passages d'Évangile cités dans le site
   trajets.py       déplacements prévus
   templates/       pages HTML (Jinja)
   static/style.css

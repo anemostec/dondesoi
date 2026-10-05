@@ -42,6 +42,43 @@ MIGRATIONS = [
     CREATE INDEX idx_messages_don ON messages (don_id);
     CREATE INDEX idx_notifications_user ON notifications (user_id, read_at);
     """,
+    # Plusieurs photos par annonce, photos dans les messages, prières, actions de grâce.
+    # (L'ancienne colonne annonces.photo est laissée en place mais n'est plus utilisée.)
+    """
+    ALTER TABLE messages ADD COLUMN photo TEXT;
+    -- Photos d'une annonce (6 au plus), dans l'ordre d'affichage.
+    CREATE TABLE annonce_photos (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        annonce_id INTEGER NOT NULL REFERENCES annonces(id) ON DELETE CASCADE,
+        filename TEXT NOT NULL,
+        position INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    
+    -- « Je prie pour vous » : un membre porte un besoin dans la prière (Mt 18,19-20).
+    CREATE TABLE prieres (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        annonce_id INTEGER NOT NULL REFERENCES annonces(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE (annonce_id, user_id)
+    );
+    
+    -- Action de grâce du receveur après un don (Lc 17,15). Le mot est toujours
+    -- transmis au donateur ; il n'est publié (sans aucun nom) que si le receveur le souhaite.
+    CREATE TABLE actions_grace (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        don_id INTEGER UNIQUE NOT NULL REFERENCES dons(id) ON DELETE CASCADE,
+        author_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body TEXT NOT NULL,
+        photo TEXT,
+        public INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    
+    CREATE INDEX idx_annonce_photos ON annonce_photos (annonce_id, position);
+    CREATE INDEX idx_actions_grace_public ON actions_grace (public, created_at);
+    """,
 ]
 
 

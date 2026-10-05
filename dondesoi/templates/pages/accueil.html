@@ -3,8 +3,8 @@
 <section class="hero">
   <h1>Donner, recevoir : une grande famille sur laquelle on peut compter.</h1>
   <p class="lead">Don de soi met en relation celles et ceux qui veulent donner et celles et ceux
-    qui ont besoin de recevoir : un objet, un coup de main, du temps, une écoute, une prière.
-    Gratuitement, toujours.</p>
+    qui ont besoin de recevoir : un objet, un repas, un coup de main, du temps, une visite, une
+    écoute, une prière. Gratuitement, toujours.</p>
   <div class="actions">
     {% if g.user %}
       <a class="btn" href="{{ url_for('annonces.nouvelle', kind='don') }}">Je propose un don</a>
@@ -14,7 +14,7 @@
       <a class="btn btn-ghost" href="{{ url_for('annonces.liste') }}">Voir les annonces</a>
     {% endif %}
   </div>
-  <p class="verse">« Vous avez reçu gratuitement, donnez gratuitement. » (Mt 10,8)</p>
+  {{ verset('gratuitement') }}
 </section>
 
 <div class="stats">
@@ -22,6 +22,12 @@
   <div class="stat"><b>{{ stats.dons_ouverts }}</b><span class="muted">dons proposés</span></div>
   <div class="stat"><b>{{ stats.besoins_ouverts }}</b><span class="muted">besoins exprimés</span></div>
   <div class="stat"><b>{{ stats.dons_realises }}</b><span class="muted">dons réalisés</span></div>
+  <div class="stat"><b>{{ stats.prieres }}</b><span class="muted">intentions portées dans la prière</span></div>
+</div>
+
+<div class="panel panel-soft">
+  <h2 style="margin-top:0">Parole du jour</h2>
+  {{ parole_du_jour() }}
 </div>
 
 <h2>L'esprit de Don de soi</h2>
@@ -30,31 +36,45 @@
     <h3>Chacun peut donner</h3>
     <p>Même le plus pauvre a quelque chose à offrir : son temps, ses mains, son écoute, sa prière.
       Le don est un don de soi, dans toutes ses dimensions humaines et spirituelles.</p>
+    {{ verset('cinq_pains', 'verse verse-small') }}
   </div>
   <div class="pillar">
     <h3>Chacun peut recevoir</h3>
     <p>Chaque membre est à la fois donneur et receveur. Dire ce dont on a besoin, c'est aussi
       permettre à l'autre de donner.</p>
+    {{ verset('demandez', 'verse verse-small') }}
   </div>
   <div class="pillar">
     <h3>Sans rien attendre en retour</h3>
     <p>Le don est entièrement et définitivement gratuit. Pas d'argent entre membres, pas de
-      publicité, aucun but lucratif.</p>
+      publicité, aucun but lucratif. Le nom du donateur reste caché.</p>
+    {{ verset('main_gauche', 'verse verse-small') }}
   </div>
   <div class="pillar">
-    <h3>Les plus démunis d'abord</h3>
-    <p>Les besoins de première nécessité (nourriture, logement, vêtements, soins) sont toujours
-      mis en relation en priorité.</p>
+    <h3>Les plus petits d'abord</h3>
+    <p>Les besoins de première nécessité (nourriture, logement, vêtements, soins, visite des
+      personnes seules) sont toujours mis en relation en priorité.</p>
+    {{ verset('plus_petits', 'verse verse-small') }}
+  </div>
+  <div class="pillar">
+    <h3>Les uns pour les autres</h3>
+    <p>On peut porter le besoin d'un autre membre dans la prière, et rendre grâce pour ce que l'on
+      a reçu.</p>
+    {{ verset('deux_ou_trois', 'verse verse-small') }}
   </div>
   <div class="pillar">
     <h3>Le témoignage silencieux</h3>
     <p>Aucun prosélytisme : chacun reste libre de ses convictions. Le seul témoignage est celui de
-      l'exemple de vie de chacun.</p>
-  </div>
-  <div class="pillar">
-    <h3>Ouvert et partagé</h3>
-    <p>Le site et son système de mise en relation sont open source : chacun peut les lire, les
-      améliorer et y contribuer.</p>
+      l'amour vécu entre nous.</p>
+    {{ verset('temoignage_silencieux', 'verse verse-small') }}
   </div>
 </div>
+
+{% if graces %}
+<h2>Ils rendent grâce</h2>
+<div class="grid">
+  {% for gr in graces %}{% include "pages/_grace.html" %}{% endfor %}
+</div>
+<p><a href="{{ url_for('main.actions_de_grace') }}">Toutes les actions de grâce</a></p>
+{% endif %}
 {% endblock %}

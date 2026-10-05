@@ -34,6 +34,9 @@ ANNONCES = [
      "Je suis disponible le soir pour un appel ou un café.", 0),
     (3, "besoin", "savoir", "Aide pour rédiger un CV",
      "Je cherche mon premier stage et mon CV manque de clarté.", 0),
+    (0, "besoin", "visite", "Une visite à ma voisine hospitalisée",
+     "Ma voisine est à l'hôpital Édouard-Herriot et n'a pas de famille proche. Je ne peux pas y "
+     "aller tous les jours.", 0),
 ]
 
 
@@ -53,6 +56,8 @@ def seed(db):
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (ids[membre], kind, cat, title, desc, MEMBRES[membre][2], essential),
         )
+    # Joseph et Paul portent dans la prière le colis alimentaire d'Anne.
+    db.executemany("INSERT INTO prieres (annonce_id, user_id) VALUES (8, ?)", [(ids[1],), (ids[3],)])
     db.execute(
         "INSERT INTO trajets (user_id, from_city, to_city, date, note) VALUES (?, ?, ?, ?, ?)",
         (ids[3], "Villeurbanne", "Grenoble", (date.today() + timedelta(days=5)).isoformat(),

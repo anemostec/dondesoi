@@ -7,6 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from .db import get_db
 from .notifications import send_email
+from .photos import COVER_SQL
 from .security import login_required
 
 bp = Blueprint("auth", __name__)
@@ -192,7 +193,7 @@ def membre(user_id):
     if membre is None:
         abort(404)
     besoins = db.execute(
-        "SELECT a.*, u.display_name FROM annonces a JOIN users u ON u.id = a.user_id "
+        f"SELECT a.*, u.display_name, {COVER_SQL} FROM annonces a JOIN users u ON u.id = a.user_id "
         "WHERE a.user_id = ? AND a.kind = 'besoin' AND a.status = 'ouverte' "
         "ORDER BY a.created_at DESC", (user_id,),
     ).fetchall()

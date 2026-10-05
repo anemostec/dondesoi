@@ -102,8 +102,14 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .hero { padding: 3rem 0 1.5rem; max-width: 760px; }
 .hero h1 { font-size: 2.6rem; margin-bottom: .4rem; }
 .hero .lead { font-size: 1.2rem; color: var(--muted); }
-.verse { font-family: var(--serif); font-style: italic; color: var(--muted);
-  border-left: 3px solid var(--accent); padding-left: 1rem; margin: 1.5rem 0; }
+/* Passages d'Évangile */
+blockquote.verse { font-family: var(--serif); color: var(--muted); border-left: 3px solid var(--accent);
+  padding-left: 1rem; margin: 1.2rem 0; max-width: 720px; }
+blockquote.verse p { font-style: italic; margin: 0; }
+blockquote.verse cite { display: block; font-style: normal; font-size: .85rem; margin-top: .25rem;
+  font-family: var(--sans); letter-spacing: .02em; }
+blockquote.verse-small { font-size: .92rem; margin: .7rem 0; }
+blockquote.verse-jour { color: var(--text); font-size: 1.15rem; border-left-color: var(--olive); }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: .8rem;
   margin: 1.5rem 0; }
 .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
@@ -163,3 +169,19 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
   padding: .6rem .9rem; max-width: 90%; }
 .msg-mine { background: var(--olive-soft); justify-self: end; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Photos */
+.gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: .5rem;
+  margin: .5rem 0 1rem; }
+.gallery a { display: block; }
+.gallery img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+.gallery .gallery-main { grid-column: 1 / -1; }
+.gallery .gallery-main img { aspect-ratio: auto; max-height: 460px; object-fit: contain;
+  background: var(--surface-2); }
+.photo-edit { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: .7rem; }
+.photo-edit-item { font-weight: 400; }
+.photo-edit-item img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; }
+.msg-photo { display: block; max-width: 260px; max-height: 260px; border-radius: 6px; margin-top: .4rem; }
+.grace img { border-radius: 6px; max-height: 220px; object-fit: cover; width: 100%; }
+input[type=file] { font: inherit; max-width: 100%; }
+.don-cover { max-width: 320px; border-radius: 8px; display: block; }

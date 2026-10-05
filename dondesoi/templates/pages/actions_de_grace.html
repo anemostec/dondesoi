@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Actions de grâce{% endblock %}
+{% block content %}
+<h1>Actions de grâce</h1>
+{{ verset('lumiere') }}
+<p class="muted">Des membres ont reçu un don et ont choisi de rendre grâce publiquement. Aucun nom
+  n'est indiqué : ni celui du donateur, qui donne dans le secret, ni celui du receveur. Toute la
+  gloire revient à Dieu.</p>
+{% if graces %}
+<div class="grid">
+  {% for gr in graces %}{% include "pages/_grace.html" %}{% endfor %}
+</div>
+{% else %}
+<p class="muted">Aucune action de grâce publiée pour l'instant.</p>
+{% endif %}
+{% endblock %}

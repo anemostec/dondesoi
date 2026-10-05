@@ -7,13 +7,20 @@ Règles de la charte appliquées ici :
   et seulement une fois le don engagé ;
 - après le don, le donateur peut laisser un avis, auquel le receveur peut répondre ;
 - la messagerie du don garde la même discrétion : le donateur y apparaît
-  comme « le donateur », jamais sous son nom.
+  comme « le donateur », jamais sous son nom ;
+- le receveur peut rendre grâce (Lc 17,15) : son mot va au donateur et,
+  s'il le souhaite, est publié sans aucun nom ;
+- le donateur peut retirer son avis à tout moment : c'est le pardon (Mt 18,22).
 """
-from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
+import os
+
+from flask import (Blueprint, abort, current_app, flash, g, redirect, render_template, request,
+                   send_from_directory, url_for)
 
 from .db import get_db
 from .matching import normalize_city, trajets_pour_don
 from .notifications import notify
+from .photos import COVER_SQL, PhotoInvalide, save_photo, thumb_name
 from .security import login_required
 
 bp = Blueprint("dons", __name__, url_prefix="/dons")
@@ -22,8 +29,8 @@ bp = Blueprint("dons", __name__, url_prefix="/dons")
 def get_don(don_id):
     db = get_db()
     don = db.execute(
-        """SELECT d.*, a.title, a.description, a.category, a.photo, a.city AS offre_city
-           FROM dons d JOIN annonces a ON a.id = d.offre_id WHERE d.id = ?""",
+        f"""SELECT d.*, a.title, a.description, a.category, a.city AS offre_city, {COVER_SQL}
+            FROM dons d JOIN annonces a ON a.id = d.offre_id WHERE d.id = ?""",
         (don_id,),
     ).fetchone()
     if don is None:
@@ -94,7 +101,7 @@ def preparer():
         db.commit()
         notify(receiver_id, f"Un membre vous fait un don : « {offre['title']} ».",
                url_for("dons.detail", don_id=cur.lastrowid))
-        flash("Merci pour ce don. « Que ta main gauche ignore ce que fait ta main droite » (Mt 6,3).")
+        flash("Merci pour ce don. « Que ta main gauche ne sache pas ce que fait ta droite. » (Mt 6,3)")
         return redirect(url_for("dons.detail", don_id=cur.lastrowid))
 
     avis = db.execute(
@@ -121,13 +128,15 @@ def detail(don_id):
     donor = db.execute("SELECT * FROM users WHERE id = ?", (don["donor_id"],)).fetchone()
     receiver = db.execute("SELECT * FROM users WHERE id = ?", (don["receiver_id"],)).fetchone()
     avis = db.execute("SELECT * FROM avis WHERE don_id = ?", (don_id,)).fetchone()
+    grace = db.execute("SELECT * FROM actions_grace WHERE don_id = ?", (don_id,)).fetchone()
 
     messages = [
         {"label": author_label(m["author_id"], uid, don, receiver["display_name"], trajet),
-         "mine": m["author_id"] == uid, "body": m["body"], "created_at": m["created_at"]}
+         "mine": m["author_id"] == uid, "body": m["body"], "photo": m["photo"], "id": m["id"],
+         "created_at": m["created_at"]}
         for m in db.execute("SELECT * FROM messages WHERE don_id = ? ORDER BY id", (don_id,))
     ]
-    ctx = {"don": don, "avis": avis, "trajet": trajet, "is_donor": is_donor,
+    ctx = {"don": don, "avis": avis, "grace": grace, "trajet": trajet, "is_donor": is_donor,
            "is_receiver": is_receiver, "is_transporter": is_transporter, "messages": messages,
            "can_write": uid in participants(don, trajet) and don["status"] != "annule"}
     if is_donor:
@@ -208,6 +217,20 @@ def transport(don_id):
                     else url_for("main.tableau_de_bord"))
 
 
+@bp.route("/<int:don_id>/avis/retirer", methods=("POST",))
+@login_required
+def retirer_avis(don_id):
+    """« Jusqu'à septante fois sept fois » (Mt 18,22) : le donateur peut effacer son avis."""
+    don = get_don(don_id)
+    if g.user["id"] != don["donor_id"]:
+        abort(403)
+    db = get_db()
+    db.execute("DELETE FROM avis WHERE don_id = ?", (don_id,))
+    db.commit()
+    flash("Votre avis est retiré.")
+    return redirect(url_for("dons.detail", don_id=don_id))
+
+
 @bp.route("/<int:don_id>/avis", methods=("POST",))
 @login_required
 def avis(don_id):
@@ -252,10 +275,18 @@ def message(don_id):
     if g.user["id"] not in members or don["status"] == "annule":
         abort(403)
     body = request.form.get("body", "").strip()
-    if body:
+    photo = None
+    upload = request.files.get("photo")
+    if upload and upload.filename:
+        try:
+            photo = save_photo(upload, "messages")
+        except PhotoInvalide as e:
+            flash(str(e), "erreur")
+            return redirect(url_for("dons.detail", don_id=don_id) + "#messages")
+    if body or photo:
         db = get_db()
-        db.execute("INSERT INTO messages (don_id, author_id, body) VALUES (?, ?, ?)",
-                   (don_id, g.user["id"], body))
+        db.execute("INSERT INTO messages (don_id, author_id, body, photo) VALUES (?, ?, ?, ?)",
+                   (don_id, g.user["id"], body, photo))
         db.commit()
         link = url_for("dons.detail", don_id=don_id)
         receiver_name = db.execute("SELECT display_name FROM users WHERE id = ?",
@@ -264,3 +295,85 @@ def message(don_id):
             label = author_label(g.user["id"], member, don, receiver_name, trajet)
             notify(member, f"{label} vous a écrit au sujet de « {don['title']} ».", link)
     return redirect(url_for("dons.detail", don_id=don_id) + "#messages")
+
+
+def _send_private(subdir, filename, thumb):
+    folder = os.path.join(current_app.config["UPLOAD_FOLDER"], subdir)
+    response = send_from_directory(folder, thumb_name(filename) if thumb else filename)
+    response.headers["Cache-Control"] = "private, max-age=86400"
+    return response
+
+
+@bp.route("/<int:don_id>/messages/<int:message_id>/photo")
+@login_required
+def message_photo(don_id, message_id):
+    """Photo d'un message : seuls les participants du don peuvent la voir."""
+    don = get_don(don_id)
+    if g.user["id"] not in participants(don, get_trajet(don)):
+        abort(403)
+    msg = get_db().execute("SELECT photo FROM messages WHERE id = ? AND don_id = ?",
+                           (message_id, don_id)).fetchone()
+    if msg is None or not msg["photo"]:
+        abort(404)
+    return _send_private("messages", msg["photo"], request.args.get("t"))
+
+
+@bp.route("/<int:don_id>/grace", methods=("POST",))
+@login_required
+def rendre_grace(don_id):
+    """Le receveur rend grâce : un mot au donateur, publié sans nom s'il le souhaite."""
+    don = get_don(don_id)
+    if g.user["id"] != don["receiver_id"] or don["status"] != "realise":
+        abort(403)
+    db = get_db()
+    if db.execute("SELECT 1 FROM actions_grace WHERE don_id = ?", (don_id,)).fetchone():
+        abort(400)
+    body = request.form.get("body", "").strip()
+    if not body:
+        flash("Le texte est vide.", "erreur")
+        return redirect(url_for("dons.detail", don_id=don_id))
+    photo = None
+    upload = request.files.get("photo")
+    if upload and upload.filename:
+        try:
+            photo = save_photo(upload, "grace")
+        except PhotoInvalide as e:
+            flash(str(e), "erreur")
+            return redirect(url_for("dons.detail", don_id=don_id))
+    db.execute("INSERT INTO actions_grace (don_id, author_id, body, photo, public) "
+               "VALUES (?, ?, ?, ?, ?)",
+               (don_id, g.user["id"], body, photo, int(bool(request.form.get("public")))))
+    db.commit()
+    notify(don["donor_id"], f"Le receveur rend grâce pour le don « {don['title']} ».",
+           url_for("dons.detail", don_id=don_id))
+    flash("Merci d'avoir rendu grâce.")
+    return redirect(url_for("dons.detail", don_id=don_id))
+
+
+@bp.route("/<int:don_id>/grace/depublier", methods=("POST",))
+@login_required
+def depublier_grace(don_id):
+    don = get_don(don_id)
+    if g.user["id"] != don["receiver_id"]:
+        abort(403)
+    db = get_db()
+    db.execute("UPDATE actions_grace SET public = 0 WHERE don_id = ?", (don_id,))
+    db.commit()
+    flash("Votre action de grâce n'est plus publiée ; le donateur la voit toujours.")
+    return redirect(url_for("dons.detail", don_id=don_id))
+
+
+@bp.route("/grace/<int:grace_id>/photo")
+def grace_photo(grace_id):
+    """Photo d'une action de grâce : publique si elle est publiée, sinon réservée au don."""
+    db = get_db()
+    grace = db.execute(
+        "SELECT ag.*, d.donor_id, d.receiver_id FROM actions_grace ag "
+        "JOIN dons d ON d.id = ag.don_id WHERE ag.id = ?", (grace_id,),
+    ).fetchone()
+    if grace is None or not grace["photo"]:
+        abort(404)
+    if not grace["public"] and (g.user is None
+                                or g.user["id"] not in (grace["donor_id"], grace["receiver_id"])):
+        abort(404)
+    return _send_private("grace", grace["photo"], request.args.get("t"))

@@ -1,7 +1,9 @@
+import io
 import re
 import sqlite3
 
 import pytest
+from PIL import Image
 
 from dondesoi import create_app
 from dondesoi.db import MIGRATIONS, get_db, init_db
@@ -245,3 +247,144 @@ def test_lien_expire(app):
     client.post("/mot-de-passe-oublie", data={"_csrf": csrf(client), "email": "anne@ex.fr"})
     app.config["PASSWORD_RESET_MAX_AGE"] = -1
     assert app.test_client().get(reset_link(app)).headers["Location"].endswith("/mot-de-passe-oublie")
+
+
+def image_file(name="photo.jpg", size=(2400, 1800), with_exif=True):
+    img = Image.new("RGB", size, "tomato")
+    buf = io.BytesIO()
+    exif = Image.Exif()
+    if with_exif:
+        exif[0x010F] = "Telephone-Espion"   # Make
+        exif[0x8825] = {1: "N", 2: (45.0, 45.0, 0.0)}   # GPSInfo
+    img.save(buf, "JPEG", exif=exif)
+    buf.seek(0)
+    return (buf, name)
+
+
+def first_photo_path(app, subdir="annonces"):
+    with app.app_context():
+        name = get_db().execute("SELECT filename FROM annonce_photos ORDER BY id").fetchone()[0]
+    return f"{app.config['UPLOAD_FOLDER']}/{subdir}/{name}"
+
+
+def test_photos_annonce(app):
+    client = app.test_client()
+    register(client, "anne@ex.fr", "Anne", "Lyon")
+    resp = client.post("/annonces/nouvelle", data={
+        "_csrf": csrf(client, "/annonces/nouvelle"), "kind": "don", "category": "objet",
+        "title": "Vélo", "photos": [image_file("a.jpg"), image_file("b.png")]})
+    annonce_id = int(resp.headers["Location"].rsplit("/", 1)[-1])
+
+    # Réduite, réencodée, sans métadonnées (ni marque d'appareil, ni GPS).
+    with Image.open(first_photo_path(app)) as img:
+        assert max(img.size) == 1600
+        assert not img.getexif()
+    page = client.get(f"/annonces/{annonce_id}").get_data(as_text=True)
+    assert page.count('alt="Photo ') == 2
+
+    # Modifier : supprimer une photo, en ajouter deux.
+    with app.app_context():
+        first_id = get_db().execute("SELECT id FROM annonce_photos ORDER BY id").fetchone()[0]
+    url = f"/annonces/{annonce_id}/modifier"
+    client.post(url, data={"_csrf": csrf(client, url), "title": "Vélo enfant", "category": "objet",
+                           "supprimer_photo": str(first_id),
+                           "photos": [image_file("c.jpg"), image_file("d.jpg")]})
+    with app.app_context():
+        assert get_db().execute("SELECT COUNT(*) FROM annonce_photos").fetchone()[0] == 3
+        assert get_db().execute("SELECT title FROM annonces").fetchone()[0] == "Vélo enfant"
+
+    # Pas plus de 6 photos.
+    resp = client.post(url, data={"_csrf": csrf(client, url), "title": "Vélo", "category": "objet",
+                                  "photos": [image_file(f"{i}.jpg") for i in range(4)]})
+    assert "6 photos" in resp.get_data(as_text=True) or "photo" in resp.get_data(as_text=True)
+    with app.app_context():
+        assert get_db().execute("SELECT COUNT(*) FROM annonce_photos").fetchone()[0] == 3
+
+    # Un faux fichier image est refusé.
+    resp = client.post("/annonces/nouvelle", data={
+        "_csrf": csrf(client, "/annonces/nouvelle"), "kind": "don", "category": "objet",
+        "title": "Piège", "photos": [(io.BytesIO(b"<script>alert(1)</script>"), "x.jpg")]})
+    assert "pas une image" in resp.get_data(as_text=True)
+
+    # Seul l'auteur peut modifier.
+    other = app.test_client()
+    register(other, "paul@ex.fr", "Paul", "Lyon")
+    assert other.get(url).status_code == 403
+
+
+def setup_don(app):
+    donor, receiver, other = app.test_client(), app.test_client(), app.test_client()
+    register(donor, "donor@ex.fr", "Joseph", "Lyon")       # id 1
+    register(receiver, "receiver@ex.fr", "Anne", "Lyon")   # id 2
+    register(other, "other@ex.fr", "Paul", "Lyon")         # id 3
+    offre = post_annonce(donor, "don", "objet", "Table", "table en bois")
+    resp = donor.post("/dons/preparer", data={
+        "_csrf": csrf(donor, "/tableau-de-bord"), "offre": offre, "receveur": 2, "shared_info": ""})
+    return donor, receiver, other, resp.headers["Location"]
+
+
+def test_photo_message_privee(app):
+    donor, receiver, other, don_url = setup_don(app)
+    donor.post(don_url + "/messages", data={"_csrf": csrf(donor, don_url), "body": "",
+                                            "photo": image_file()})
+    with app.app_context():
+        msg = get_db().execute("SELECT * FROM messages").fetchone()
+    assert msg["photo"]
+    photo_url = f"{don_url}/messages/{msg['id']}/photo"
+    assert receiver.get(photo_url).status_code == 200
+    assert other.get(photo_url).status_code == 403
+    assert app.test_client().get(photo_url).status_code == 302   # non connecté
+
+
+def test_action_de_grace_et_pardon(app):
+    donor, receiver, other, don_url = setup_don(app)
+    donor.post(don_url + "/statut", data={"_csrf": csrf(donor, don_url), "action": "realise"})
+
+    receiver.post(don_url + "/grace", data={"_csrf": csrf(receiver, don_url),
+                                            "body": "Merci Seigneur pour cette table !",
+                                            "public": "1", "photo": image_file()})
+    assert any("rend grâce" in b for b in unread(app, 1))
+    page = app.test_client().get("/actions-de-grace").get_data(as_text=True)
+    assert "Merci Seigneur" in page and "Anne" not in page and "Joseph" not in page
+    with app.app_context():
+        grace_id = get_db().execute("SELECT id FROM actions_grace").fetchone()[0]
+    assert app.test_client().get(f"/dons/grace/{grace_id}/photo").status_code == 200
+
+    # Dépubliée : disparaît de la page publique, photo réservée au donateur et au receveur.
+    receiver.post(don_url + "/grace/depublier", data={"_csrf": csrf(receiver, don_url)})
+    assert "Merci Seigneur" not in app.test_client().get("/actions-de-grace").get_data(as_text=True)
+    assert app.test_client().get(f"/dons/grace/{grace_id}/photo").status_code == 404
+    assert donor.get(f"/dons/grace/{grace_id}/photo").status_code == 200
+
+    # Avis puis pardon : le donateur peut le retirer.
+    donor.post(don_url + "/avis", data={"_csrf": csrf(donor, don_url), "body": "Retard au RDV."})
+    donor.post(don_url + "/avis/retirer", data={"_csrf": csrf(donor, don_url)})
+    with app.app_context():
+        assert get_db().execute("SELECT COUNT(*) FROM avis").fetchone()[0] == 0
+    assert receiver.post(don_url + "/avis/retirer",
+                         data={"_csrf": csrf(receiver, don_url)}).status_code == 403
+
+
+def test_priere_et_dignite(app):
+    anne, paul = app.test_client(), app.test_client()
+    register(anne, "anne@ex.fr", "Anne", "Lyon")
+    register(paul, "paul@ex.fr", "Paul", "Lyon")
+    besoin = post_annonce(anne, "besoin", "nourriture", "Colis alimentaire")
+
+    url = f"/annonces/{besoin}/priere"
+    paul.post(url, data={"_csrf": csrf(paul, f"/annonces/{besoin}")})
+    paul.post(url, data={"_csrf": csrf(paul, f"/annonces/{besoin}")})   # pas de doublon
+    assert sum("prière" in b for b in unread(app, 1)) == 1
+    assert "1 membre porte" in anne.get(f"/annonces/{besoin}").get_data(as_text=True)
+    assert anne.post(url, data={"_csrf": csrf(anne, f"/annonces/{besoin}")}).status_code == 400
+
+    # Le nom de la personne dans le besoin n'est pas montré aux visiteurs non inscrits.
+    visitor = app.test_client()
+    assert "Anne" not in visitor.get(f"/annonces/{besoin}").get_data(as_text=True)
+    assert "Anne" not in visitor.get("/annonces/").get_data(as_text=True)
+
+
+def test_versets_affiches(app):
+    page = app.test_client().get("/charte").get_data(as_text=True)
+    assert "Mt 6,3-4" in page and "Louis Segond" in page
+    assert "Parole du jour" in app.test_client().get("/").get_data(as_text=True)
