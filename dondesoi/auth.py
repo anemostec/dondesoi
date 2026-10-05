@@ -1,8 +1,12 @@
-from flask import (Blueprint, abort, flash, g, redirect, render_template, request,
+import hashlib
+
+from flask import (Blueprint, abort, current_app, flash, g, redirect, render_template, request,
                    session, url_for)
+from itsdangerous import BadSignature, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .db import get_db
+from .notifications import send_email
 from .security import login_required
 
 bp = Blueprint("auth", __name__)
@@ -73,6 +77,77 @@ def connexion():
                 target = url_for("main.tableau_de_bord")
             return redirect(target)
     return render_template("auth/connexion.html")
+
+
+def _reset_serializer():
+    return URLSafeTimedSerializer(current_app.config["SECRET_KEY"], salt="mot-de-passe-oublie")
+
+
+def _password_fingerprint(user):
+    return hashlib.sha256(user["password_hash"].encode()).hexdigest()[:16]
+
+
+def make_reset_token(user):
+    # Une empreinte du mot de passe actuel est signée avec le lien : dès que
+    # le mot de passe change, le lien ne fonctionne plus (usage unique).
+    return _reset_serializer().dumps({"id": user["id"], "pw": _password_fingerprint(user)})
+
+
+def user_from_reset_token(token):
+    try:
+        data = _reset_serializer().loads(token, max_age=current_app.config["PASSWORD_RESET_MAX_AGE"])
+    except BadSignature:  # couvre aussi le lien expiré
+        return None
+    user = get_db().execute("SELECT * FROM users WHERE id = ?", (data.get("id"),)).fetchone()
+    if user is None or _password_fingerprint(user) != data.get("pw"):
+        return None
+    return user
+
+
+@bp.route("/mot-de-passe-oublie", methods=("GET", "POST"))
+def mot_de_passe_oublie():
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        user = get_db().execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
+        if user is not None:
+            link = url_for("auth.reinitialiser", token=make_reset_token(user), _external=True)
+            minutes = current_app.config["PASSWORD_RESET_MAX_AGE"] // 60
+            send_email(user["email"], "Don de soi : choisir un nouveau mot de passe",
+                       f"Bonjour {user['display_name']},\n\n"
+                       f"Pour choisir un nouveau mot de passe, ouvrez ce lien (valable {minutes} minutes,"
+                       f" utilisable une seule fois) :\n\n{link}\n\n"
+                       "Si vous n'êtes pas à l'origine de cette demande, ignorez simplement ce message :"
+                       " votre mot de passe actuel reste valable.\n\nDon de soi\n")
+        # Même réponse que le compte existe ou non, pour ne pas révéler qui est inscrit.
+        flash("Si un compte existe avec cette adresse, un e-mail vient de lui être envoyé avec un "
+              "lien pour choisir un nouveau mot de passe.")
+        return redirect(url_for("auth.connexion"))
+    return render_template("auth/mot_de_passe_oublie.html")
+
+
+@bp.route("/reinitialiser/<token>", methods=("GET", "POST"))
+def reinitialiser(token):
+    user = user_from_reset_token(token)
+    if user is None:
+        flash("Ce lien n'est plus valable (expiré ou déjà utilisé). Vous pouvez en demander un "
+              "nouveau.", "erreur")
+        return redirect(url_for("auth.mot_de_passe_oublie"))
+    if request.method == "POST":
+        password = request.form.get("password", "")
+        if len(password) < 8:
+            flash("Le mot de passe doit contenir au moins 8 caractères.", "erreur")
+        elif password != request.form.get("password2", ""):
+            flash("Les deux mots de passe ne sont pas identiques.", "erreur")
+        else:
+            db = get_db()
+            db.execute("UPDATE users SET password_hash = ? WHERE id = ?",
+                       (generate_password_hash(password), user["id"]))
+            db.commit()
+            session.clear()
+            session["user_id"] = user["id"]
+            flash("Votre mot de passe a été changé.")
+            return redirect(url_for("main.tableau_de_bord"))
+    return render_template("auth/reinitialiser.html")
 
 
 @bp.route("/deconnexion", methods=("POST",))

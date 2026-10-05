@@ -49,6 +49,7 @@ Toute variable d'environnement `DONDESOI_XXX` remplace le réglage `XXX` :
 | `DONDESOI_MAIL_FROM` | expéditeur des e-mails |
 | `DONDESOI_SOURCE_URL` | lien vers le dépôt public, affiché en pied de page (exigé par l'AGPL) |
 | `DONDESOI_TIMEZONE` | fuseau d'affichage des heures (défaut `Europe/Paris`) |
+| `DONDESOI_PASSWORD_RESET_MAX_AGE` | durée de validité du lien « mot de passe oublié », en secondes (défaut 3600) |
 
 Les bases existantes sont mises à jour automatiquement au démarrage (`MIGRATIONS` dans `db.py`).
 
@@ -74,7 +75,6 @@ tests/
 - Mise en relation sémantique (modèle d'embeddings open source), distance géographique réelle,
   apprentissage des préférences du donateur
 - Récapitulatif quotidien par e-mail plutôt qu'un e-mail par événement
-- Mot de passe oublié (l'infrastructure d'e-mail existe désormais)
 - Trajets avec étapes, et trajets réguliers
 - Suppression de compte, modération, signalement d'un message
 - Structure associative et page de transparence pour le don d'argent

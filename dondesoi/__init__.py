@@ -54,6 +54,7 @@ def create_app(test_config=None):
         # Lien vers le code source, que l'AGPL demande d'offrir aux utilisateurs.
         SOURCE_URL="",
         TIMEZONE="Europe/Paris",
+        PASSWORD_RESET_MAX_AGE=3600,
     )
     # Toute variable d'environnement DONDESOI_XXX remplace la valeur XXX
     # (ex. DONDESOI_MAIL_BACKEND=smtp, DONDESOI_SMTP_HOST=...).

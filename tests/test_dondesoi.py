@@ -200,3 +200,48 @@ def test_migration_base_existante(tmp_path):
     assert db.execute("PRAGMA user_version").fetchone()[0] == len(MIGRATIONS)
     assert "email_notifications" in [r[1] for r in db.execute("PRAGMA table_info(users)")]
     db.execute("SELECT * FROM messages, notifications")
+
+
+def reset_link(app):
+    mail = app.extensions["outbox"][-1]
+    return re.search(r"http://localhost(/reinitialiser/\S+)", mail["text"]).group(1)
+
+
+def login(client, email, password):
+    return client.post("/connexion", data={"_csrf": csrf(client), "email": email,
+                                           "password": password})
+
+
+def test_mot_de_passe_oublie(app):
+    client = app.test_client()
+    register(client, "anne@ex.fr", "Anne", "Lyon")
+    client.post("/deconnexion", data={"_csrf": csrf(client, "/")})
+
+    # Adresse inconnue : même message, aucun e-mail.
+    resp = client.post("/mot-de-passe-oublie", data={"_csrf": csrf(client), "email": "x@ex.fr"},
+                       follow_redirects=True)
+    assert "Si un compte existe" in resp.get_data(as_text=True)
+    assert not app.extensions.get("outbox")
+
+    client.post("/mot-de-passe-oublie", data={"_csrf": csrf(client), "email": "Anne@ex.fr"})
+    link = reset_link(app)
+
+    resp = client.post(link, data={"_csrf": csrf(client, link), "password": "nouveaumdp",
+                                   "password2": "different"})
+    assert "pas identiques" in resp.get_data(as_text=True)
+    client.post(link, data={"_csrf": csrf(client, link), "password": "nouveaumdp",
+                            "password2": "nouveaumdp"})
+
+    other = app.test_client()
+    assert login(other, "anne@ex.fr", "motdepasse").status_code == 200       # ancien refusé
+    assert login(other, "anne@ex.fr", "nouveaumdp").status_code == 302       # nouveau accepté
+    # Le lien ne sert qu'une fois.
+    assert app.test_client().get(link).headers["Location"].endswith("/mot-de-passe-oublie")
+
+
+def test_lien_expire(app):
+    client = app.test_client()
+    register(client, "anne@ex.fr", "Anne", "Lyon")
+    client.post("/mot-de-passe-oublie", data={"_csrf": csrf(client), "email": "anne@ex.fr"})
+    app.config["PASSWORD_RESET_MAX_AGE"] = -1
+    assert app.test_client().get(reset_link(app)).headers["Location"].endswith("/mot-de-passe-oublie")

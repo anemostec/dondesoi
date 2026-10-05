@@ -8,5 +8,6 @@
   <div><label for="password">Mot de passe</label><input type="password" id="password" name="password" required></div>
   <div><button class="btn">Se connecter</button></div>
 </form>
+<p class="muted"><a href="{{ url_for('auth.mot_de_passe_oublie') }}">Mot de passe oublié ?</a></p>
 <p class="muted">Pas encore membre ? <a href="{{ url_for('auth.inscription') }}">Rejoindre Don de soi</a></p>
 {% endblock %}
