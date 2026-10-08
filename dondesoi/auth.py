@@ -9,7 +9,7 @@ from .db import get_db
 from .geo import coords_or_none
 from .notifications import send_email
 from .photos import COVER_SQL
-from .security import login_required
+from .security import login_required, trop_de_demandes
 
 bp = Blueprint("auth", __name__)
 
@@ -113,7 +113,11 @@ def mot_de_passe_oublie():
     if request.method == "POST":
         email = request.form.get("email", "").strip().lower()
         user = get_db().execute("SELECT * FROM users WHERE email = ?", (email,)).fetchone()
-        if user is not None:
+        # Pas plus de 3 e-mails par adresse et par heure, ni de 10 demandes par connexion :
+        # le formulaire ne doit pas servir à inonder la boîte de quelqu'un.
+        limite = (trop_de_demandes(f"reset-ip:{request.remote_addr}", 10, 60)
+                  or (user is not None and trop_de_demandes(f"reset:{email}", 3, 60)))
+        if user is not None and not limite:
             link = url_for("auth.reinitialiser", token=make_reset_token(user), _external=True)
             minutes = current_app.config["PASSWORD_RESET_MAX_AGE"] // 60
             send_email(user["email"], "Don de soi : choisir un nouveau mot de passe",
@@ -184,6 +188,34 @@ def profil():
             flash("Profil mis à jour.")
             return redirect(url_for("auth.profil"))
     return render_template("auth/profil.html")
+
+
+@bp.route("/profil/supprimer", methods=("GET", "POST"))
+@login_required
+def supprimer_compte():
+    """Chacun est libre de partir (Jn 6,67) : le compte et tout son contenu sont effacés."""
+    if request.method == "POST":
+        if not check_password_hash(g.user["password_hash"], request.form.get("password", "")):
+            flash("Mot de passe incorrect.", "erreur")
+        else:
+            from .photos import delete_photo
+            db = get_db()
+            uid = g.user["id"]
+            for p in db.execute("SELECT p.filename FROM annonce_photos p JOIN annonces a "
+                                "ON a.id = p.annonce_id WHERE a.user_id = ?", (uid,)):
+                delete_photo(p["filename"])
+            for m in db.execute("SELECT photo FROM messages WHERE author_id = ? AND photo IS NOT NULL",
+                                (uid,)):
+                delete_photo(m["photo"], "messages")
+            for gr in db.execute("SELECT photo FROM actions_grace WHERE author_id = ? "
+                                 "AND photo IS NOT NULL", (uid,)):
+                delete_photo(gr["photo"], "grace")
+            db.execute("DELETE FROM users WHERE id = ?", (uid,))   # le reste suit (ON DELETE CASCADE)
+            db.commit()
+            session.clear()
+            flash("Votre compte et tout ce que vous aviez publié ont été supprimés. Que Dieu vous garde.")
+            return redirect(url_for("main.accueil"))
+    return render_template("auth/supprimer.html")
 
 
 @bp.route("/membre/<int:user_id>")

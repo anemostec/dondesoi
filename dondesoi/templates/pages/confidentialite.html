@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Confidentialité{% endblock %}
+{% block content %}
+<div class="prose">
+<h1>Confidentialité</h1>
+<p>Don de soi ne vend, ne loue et ne partage vos données avec personne. Il n'y a ni publicité, ni
+  pistage, ni cookie autre que celui qui garde votre session ouverte.</p>
+
+<h2>Ce que nous gardons</h2>
+<ul>
+  <li>Votre adresse e-mail, votre prénom ou pseudonyme, votre ville et, si vous le donnez, votre
+    code postal, une présentation et un moyen de contact.</li>
+  <li>Ce que vous publiez : annonces, photos, messages, prières, trajets, avis, actions de grâce.</li>
+  <li>Votre mot de passe n'est jamais stocké en clair (seulement une empreinte chiffrée).</li>
+</ul>
+
+<h2>Qui voit quoi</h2>
+<ul>
+  <li>Le nom d'un donateur n'est jamais montré ; le receveur ne voit que ce que le donateur choisit
+    de partager.</li>
+  <li>Le nom de l'auteur d'un besoin et son profil ne sont visibles que des membres inscrits.</li>
+  <li>Les photos des messages ne sont visibles que des personnes concernées par le don. Les photos
+    sont réduites et leurs métadonnées (position GPS, appareil) effacées.</li>
+</ul>
+
+<h2>Services utilisés</h2>
+<ul>
+  <li>Le nom de votre ville et votre code postal sont envoyés une fois au service public
+    <a href="https://geo.api.gouv.fr">geo.api.gouv.fr</a> pour calculer les distances.</li>
+  <li>Le rapprochement des annonces par le sens se fait sur notre serveur : aucun texte n'est
+    envoyé à un service d'intelligence artificielle extérieur.</li>
+  <li>Le site est hébergé sur un serveur Oracle Cloud situé dans l'Union européenne.</li>
+</ul>
+
+<h2>Vos droits</h2>
+<p>Vous pouvez modifier vos informations dans « Mon profil », et
+  {% if g.user %}<a href="{{ url_for('auth.supprimer_compte') }}">supprimer votre compte</a>{% else %}supprimer votre compte{% endif %}
+  à tout moment : tout est alors effacé.
+  {% if CONTACT_EMAIL %}Pour toute question : <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>.{% endif %}</p>
+</div>
+{% endblock %}

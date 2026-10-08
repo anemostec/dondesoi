@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Supprimer mon compte{% endblock %}
+{% block content %}
+<h1>Supprimer mon compte</h1>
+{{ verset('vous_en_aller') }}
+<p>Vous restez libre de partir. La suppression est immédiate et définitive : votre profil, vos
+  annonces et leurs photos, vos messages, vos prières, vos trajets, vos notifications et les avis
+  qui vous concernent seront effacés.</p>
+<form class="stack" method="post">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div><label for="password">Confirmez avec votre mot de passe</label>
+    <input type="password" id="password" name="password" required autocomplete="current-password"></div>
+  <div class="actions">
+    <button class="btn btn-danger">Supprimer définitivement mon compte</button>
+    <a class="btn btn-ghost" href="{{ url_for('auth.profil') }}">Annuler</a>
+  </div>
+</form>
+{% endblock %}

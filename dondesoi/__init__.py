@@ -58,6 +58,10 @@ def create_app(test_config=None):
         SOURCE_URL="https://github.com/anemostec/dondesoi",
         TIMEZONE="Europe/Paris",
         PASSWORD_RESET_MAX_AGE=3600,
+        # Adresse de contact affichée sur la page « Confidentialité ».
+        CONTACT_EMAIL="",
+        # En production derrière un proxy HTTPS (Caddy) : DONDESOI_BEHIND_PROXY=true.
+        BEHIND_PROXY=False,
         # Distance réelle : coordonnées des villes via geo.api.gouv.fr (« none » pour désactiver).
         GEOCODER="api",
         GEO_API_URL="https://geo.api.gouv.fr",
@@ -71,6 +75,11 @@ def create_app(test_config=None):
     app.config.from_prefixed_env("DONDESOI")
     if test_config:
         app.config.update(test_config)
+    if app.config["BEHIND_PROXY"]:
+        from werkzeug.middleware.proxy_fix import ProxyFix
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+        app.config.update(SESSION_COOKIE_SECURE=True, PREFERRED_URL_SCHEME="https")
+    app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
     if not app.config.get("SECRET_KEY"):
         app.config["SECRET_KEY"] = _secret_key(app.instance_path)
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
@@ -112,6 +121,7 @@ def create_app(test_config=None):
     def inject_constants():
         return {"CATEGORIES": CATEGORIES, "CATEGORY_LABELS": CATEGORY_LABELS,
                 "ESSENTIAL_CATEGORIES": ESSENTIAL_CATEGORIES,
-                "SOURCE_URL": app.config["SOURCE_URL"]}
+                "SOURCE_URL": app.config["SOURCE_URL"],
+                "CONTACT_EMAIL": app.config["CONTACT_EMAIL"]}
 
     return app

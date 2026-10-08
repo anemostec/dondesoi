@@ -1,0 +1,14 @@
+# Caddy obtient et renouvelle seul le certificat HTTPS (Let's Encrypt).
+{$DONDESOI_DOMAIN} {
+	encode zstd gzip
+	request_body {
+		max_size 40MB
+	}
+	reverse_proxy 127.0.0.1:8000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}

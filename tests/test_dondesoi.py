@@ -582,3 +582,46 @@ def test_filtre_rayon(app):
     page = client.get("/annonces/?rayon=15").get_data(as_text=True)
     assert "Table proche" in page and "Table lointaine" not in page
     assert "à 4 km" in page
+
+
+# --- Mise en ligne -------------------------------------------------------------------
+
+def test_limite_mot_de_passe_oublie(app):
+    client = app.test_client()
+    register(client, "anne@ex.fr", "Anne", "Lyon")
+    for _ in range(5):
+        client.post("/mot-de-passe-oublie", data={"_csrf": csrf(client), "email": "anne@ex.fr"})
+    assert len(app.extensions["outbox"]) == 3     # pas plus de 3 e-mails par heure
+
+
+def test_supprimer_son_compte(app):
+    donor, receiver, other, don_url = setup_don(app)
+    receiver.post(don_url + "/messages", data={"_csrf": csrf(receiver, don_url), "body": "Merci",
+                                               "photo": image_file()})
+    resp = receiver.post("/profil/supprimer", data={"_csrf": csrf(receiver, "/profil"),
+                                                    "password": "mauvais"})
+    assert "incorrect" in resp.get_data(as_text=True)
+    receiver.post("/profil/supprimer", data={"_csrf": csrf(receiver, "/profil"),
+                                             "password": "motdepasse"})
+    with app.app_context():
+        db = get_db()
+        assert db.execute("SELECT COUNT(*) FROM users WHERE email = 'receiver@ex.fr'").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM dons").fetchone()[0] == 0
+        assert db.execute("SELECT COUNT(*) FROM messages").fetchone()[0] == 0
+    import os
+    assert os.listdir(f"{app.config['UPLOAD_FOLDER']}/messages") == []   # photo effacée du disque
+    assert login(app.test_client(), "receiver@ex.fr", "motdepasse").status_code == 200
+
+
+def test_derriere_un_proxy(tmp_path):
+    app = create_app({"SECRET_KEY": "t", "DATABASE": str(tmp_path / "p.sqlite"),
+                      "UPLOAD_FOLDER": str(tmp_path), "BEHIND_PROXY": True, "GEOCODER": "none",
+                      "SEMANTIC_MODEL": "", "MAIL_BACKEND": "memory"})
+    with app.app_context():
+        init_db()
+    client = app.test_client()
+    resp = client.get("/connexion", headers={"X-Forwarded-Proto": "https",
+                                            "X-Forwarded-Host": "dondesoi.example.org"})
+    assert app.config["SESSION_COOKIE_SECURE"] is True
+    assert "Secure" in resp.headers.get("Set-Cookie", "")
+    assert client.get("/confidentialite").status_code == 200

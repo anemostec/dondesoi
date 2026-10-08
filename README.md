@@ -67,6 +67,22 @@ Les bases existantes sont mises à jour automatiquement au démarrage (`MIGRATIO
 `flask --app dondesoi localiser` complète les coordonnées et les vecteurs de sens manquants
 (utile après une mise à jour, ou si geo.api.gouv.fr était injoignable).
 
+## Mise en ligne
+
+Sur un serveur Ubuntu 22.04/24.04 (x86 ou ARM, 1 Go de mémoire au moins), en root :
+
+```bash
+curl -fsSLO https://raw.githubusercontent.com/anemostec/dondesoi/main/deploy/install.sh
+sudo DONDESOI_DOMAIN=mon.domaine.org bash install.sh
+```
+
+Le script installe Python, [Caddy](https://caddyserver.com) (HTTPS automatique), le service
+`dondesoi` (gunicorn), ouvre les ports 80/443 et télécharge le modèle de sens. Sans
+`DONDESOI_DOMAIN`, une adresse gratuite `dondesoi.<ip>.sslip.io` est utilisée. Relancer le script
+met à jour le code sans toucher aux données (`/opt/dondesoi/app/instance`). La configuration
+(clé secrète, SMTP, contact) est dans `/etc/dondesoi.env` ; après modification :
+`sudo systemctl restart dondesoi`.
+
 ## Organisation du code
 
 ```

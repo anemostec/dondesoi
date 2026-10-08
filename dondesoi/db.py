@@ -107,6 +107,15 @@ MIGRATIONS = [
         vecteur BLOB NOT NULL
     );
     """,
+    # Limitation des demandes répétées.
+    """
+    -- Compteur anti-abus (demandes de mot de passe oublié…), purgé au fil de l'eau.
+    CREATE TABLE limites (
+        cle TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX idx_limites ON limites (cle, created_at);
+    """,
 ]
 
 

@@ -1,0 +1,22 @@
+[Unit]
+Description=Don de soi (gunicorn)
+After=network.target
+
+[Service]
+User=dondesoi
+Group=dondesoi
+WorkingDirectory=/opt/dondesoi/app
+EnvironmentFile=/etc/dondesoi.env
+# Un seul processus, plusieurs fils : le modèle de sens n'est chargé qu'une fois en mémoire.
+ExecStart=/opt/dondesoi/venv/bin/gunicorn --workers 1 --threads 8 --timeout 120 \
+    --bind 127.0.0.1:8000 --access-logfile - wsgi:app
+Restart=always
+RestartSec=5
+# Durcissement
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/dondesoi
+
+[Install]
+WantedBy=multi-user.target

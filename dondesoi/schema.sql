@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS limites;
 DROP TABLE IF EXISTS annonce_vecteurs;
 DROP TABLE IF EXISTS lieux;
 DROP TABLE IF EXISTS actions_grace;
@@ -171,9 +172,16 @@ CREATE TABLE annonce_vecteurs (
     vecteur BLOB NOT NULL
 );
 
+-- Compteur anti-abus (demandes de mot de passe oublié…), purgé au fil de l'eau.
+CREATE TABLE limites (
+    cle TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX idx_limites ON limites (cle, created_at);
+
 CREATE INDEX idx_messages_don ON messages (don_id);
 CREATE INDEX idx_notifications_user ON notifications (user_id, read_at);
 CREATE INDEX idx_annonces_open ON annonces (kind, status);
 CREATE INDEX idx_trajets_date ON trajets (date);
 
-PRAGMA user_version = 3;
+PRAGMA user_version = 4;

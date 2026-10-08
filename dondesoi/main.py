@@ -72,6 +72,11 @@ def partenaires():
     return render_template("pages/partenaires.html")
 
 
+@bp.route("/confidentialite")
+def confidentialite():
+    return render_template("pages/confidentialite.html")
+
+
 @bp.route("/contribuer")
 def contribuer():
     return render_template("pages/contribuer.html")

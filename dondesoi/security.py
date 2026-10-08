@@ -12,6 +12,22 @@ def csrf_token():
     return session["_csrf"]
 
 
+def trop_de_demandes(cle, maximum, minutes):
+    """Vrai si l'action « cle » a déjà eu lieu « maximum » fois dans les dernières minutes.
+    Sinon, la compte et retourne faux."""
+    db = get_db()
+    depuis = f"-{int(minutes)} minutes"
+    db.execute("DELETE FROM limites WHERE created_at < datetime('now', '-1 day')")
+    n = db.execute("SELECT COUNT(*) FROM limites WHERE cle = ? AND created_at >= datetime('now', ?)",
+                   (cle, depuis)).fetchone()[0]
+    if n >= maximum:
+        db.commit()
+        return True
+    db.execute("INSERT INTO limites (cle) VALUES (?)", (cle,))
+    db.commit()
+    return False
+
+
 def login_required(view):
     @functools.wraps(view)
     def wrapped(**kwargs):
