@@ -1,5 +1,7 @@
 # Don de soi
 
+Code source : https://github.com/anemostec/dondesoi
+
 Site web chrétien, sans but lucratif et sans publicité, qui met en relation les membres
 pour faciliter le don sous toutes ses formes : objets, services, temps, écoute, prière.
 L'esprit du projet est décrit dans `../don_de_soi.tex` et sur la page « Charte » du site.
@@ -54,7 +56,7 @@ Toute variable d'environnement `DONDESOI_XXX` remplace le réglage `XXX` :
 | `DONDESOI_MAIL_BACKEND` | `console` (défaut : e-mails affichés dans le terminal) ou `smtp` |
 | `DONDESOI_SMTP_HOST`, `DONDESOI_SMTP_PORT`, `DONDESOI_SMTP_USER`, `DONDESOI_SMTP_PASSWORD` | serveur d'envoi (STARTTLS) |
 | `DONDESOI_MAIL_FROM` | expéditeur des e-mails |
-| `DONDESOI_SOURCE_URL` | lien vers le dépôt public, affiché en pied de page (exigé par l'AGPL) |
+| `DONDESOI_SOURCE_URL` | lien vers le code source, affiché en pied de page (exigé par l'AGPL) ; par défaut ce dépôt. Une version modifiée mise en ligne doit pointer vers son propre code |
 | `DONDESOI_TIMEZONE` | fuseau d'affichage des heures (défaut `Europe/Paris`) |
 | `DONDESOI_PASSWORD_RESET_MAX_AGE` | durée de validité du lien « mot de passe oublié », en secondes (défaut 3600) |
 
