@@ -79,6 +79,34 @@ MIGRATIONS = [
     CREATE INDEX idx_annonce_photos ON annonce_photos (annonce_id, position);
     CREATE INDEX idx_actions_grace_public ON actions_grace (public, created_at);
     """,
+    # Distance réelle et sens des mots pour la mise en relation.
+    """
+    ALTER TABLE users ADD COLUMN lat REAL;
+    ALTER TABLE users ADD COLUMN lon REAL;
+    ALTER TABLE annonces ADD COLUMN lat REAL;
+    ALTER TABLE annonces ADD COLUMN lon REAL;
+    ALTER TABLE trajets ADD COLUMN from_lat REAL;
+    ALTER TABLE trajets ADD COLUMN from_lon REAL;
+    ALTER TABLE trajets ADD COLUMN to_lat REAL;
+    ALTER TABLE trajets ADD COLUMN to_lon REAL;
+    -- Coordonnées des villes déjà cherchées (geo.api.gouv.fr), échecs compris,
+    -- pour n'interroger le service qu'une fois par ville.
+    CREATE TABLE lieux (
+        cle TEXT PRIMARY KEY,
+        nom TEXT,
+        lat REAL,
+        lon REAL,
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    -- Représentation du sens d'une annonce (modèle d'embeddings), recalculée
+    -- quand l'annonce change.
+    CREATE TABLE annonce_vecteurs (
+        annonce_id INTEGER PRIMARY KEY REFERENCES annonces(id) ON DELETE CASCADE,
+        modele TEXT NOT NULL,
+        vecteur BLOB NOT NULL
+    );
+    """,
 ]
 
 
@@ -112,6 +140,43 @@ def seed_demo_command():
     init_db()
     seed(get_db())
     click.echo("Données de démonstration créées (mot de passe : demo1234).")
+    localiser(click.echo)
+
+
+def localiser(echo=print):
+    """Complète les coordonnées et les vecteurs de sens qui manquent."""
+    from .geo import coords_or_none
+    from .sens import get_embedder, vecteurs
+    db = get_db()
+    n = 0
+    for u in db.execute("SELECT * FROM users WHERE lat IS NULL").fetchall():
+        lat, lon = coords_or_none(u["city"], u["postal_code"])
+        if lat is not None:
+            db.execute("UPDATE users SET lat = ?, lon = ? WHERE id = ?", (lat, lon, u["id"]))
+            n += 1
+    for a in db.execute("SELECT * FROM annonces WHERE lat IS NULL").fetchall():
+        lat, lon = coords_or_none(a["city"])
+        if lat is not None:
+            db.execute("UPDATE annonces SET lat = ?, lon = ? WHERE id = ?", (lat, lon, a["id"]))
+            n += 1
+    for t in db.execute("SELECT * FROM trajets WHERE from_lat IS NULL OR to_lat IS NULL").fetchall():
+        (flat, flon), (tlat, tlon) = coords_or_none(t["from_city"]), coords_or_none(t["to_city"])
+        db.execute("UPDATE trajets SET from_lat = ?, from_lon = ?, to_lat = ?, to_lon = ? "
+                   "WHERE id = ?", (flat, flon, tlat, tlon, t["id"]))
+        n += 1
+    db.commit()
+    echo(f"{n} lieu(x) localisé(s).")
+    if get_embedder() is None:
+        echo("Sens des mots indisponible (fastembed absent ou SEMANTIC_MODEL vide).")
+    else:
+        annonces = db.execute("SELECT * FROM annonces WHERE status = 'ouverte'").fetchall()
+        echo(f"Sens calculé pour {len(vecteurs(db, annonces))} annonce(s).")
+
+
+@click.command("localiser")
+def localiser_command():
+    """Complète coordonnées (geo.api.gouv.fr) et vecteurs de sens manquants."""
+    localiser(click.echo)
 
 
 def init_app(app):
@@ -120,3 +185,4 @@ def init_app(app):
         migrate()
     app.cli.add_command(init_db_command)
     app.cli.add_command(seed_demo_command)
+    app.cli.add_command(localiser_command)

@@ -26,6 +26,15 @@
       {% endfor %}
     </select>
   </div>
+  {% if localise %}
+  <div>
+    <label for="rayon">Distance</label>
+    <select id="rayon" name="rayon">
+      <option value="">Partout</option>
+      {% for r in rayons %}<option value="{{ r }}" {{ 'selected' if rayon == r }}>À moins de {{ r }} km</option>{% endfor %}
+    </select>
+  </div>
+  {% endif %}
   <button class="btn">Filtrer</button>
 </form>
 

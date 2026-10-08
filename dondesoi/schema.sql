@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS annonce_vecteurs;
+DROP TABLE IF EXISTS lieux;
 DROP TABLE IF EXISTS actions_grace;
 DROP TABLE IF EXISTS prieres;
 DROP TABLE IF EXISTS annonce_photos;
@@ -21,6 +23,8 @@ CREATE TABLE users (
     -- Coordonnées que le membre accepte de montrer aux donateurs.
     contact TEXT NOT NULL DEFAULT '',
     email_notifications INTEGER NOT NULL DEFAULT 1,
+    lat REAL,
+    lon REAL,
     charter_accepted_at TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -35,6 +39,8 @@ CREATE TABLE annonces (
     description TEXT NOT NULL DEFAULT '',
     city TEXT NOT NULL,
     essential INTEGER NOT NULL DEFAULT 0,
+    lat REAL,
+    lon REAL,
     status TEXT NOT NULL DEFAULT 'ouverte'
         CHECK (status IN ('ouverte', 'attribuee', 'close')),
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -59,6 +65,10 @@ CREATE TABLE trajets (
     to_city TEXT NOT NULL,
     date TEXT NOT NULL,
     note TEXT NOT NULL DEFAULT '',
+    from_lat REAL,
+    from_lon REAL,
+    to_lat REAL,
+    to_lon REAL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -143,9 +153,27 @@ CREATE TABLE actions_grace (
 CREATE INDEX idx_annonce_photos ON annonce_photos (annonce_id, position);
 CREATE INDEX idx_actions_grace_public ON actions_grace (public, created_at);
 
+-- Coordonnées des villes déjà cherchées (geo.api.gouv.fr), échecs compris,
+-- pour n'interroger le service qu'une fois par ville.
+CREATE TABLE lieux (
+    cle TEXT PRIMARY KEY,
+    nom TEXT,
+    lat REAL,
+    lon REAL,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- Représentation du sens d'une annonce (modèle d'embeddings), recalculée
+-- quand l'annonce change.
+CREATE TABLE annonce_vecteurs (
+    annonce_id INTEGER PRIMARY KEY REFERENCES annonces(id) ON DELETE CASCADE,
+    modele TEXT NOT NULL,
+    vecteur BLOB NOT NULL
+);
+
 CREATE INDEX idx_messages_don ON messages (don_id);
 CREATE INDEX idx_notifications_user ON notifications (user_id, read_at);
 CREATE INDEX idx_annonces_open ON annonces (kind, status);
 CREATE INDEX idx_trajets_date ON trajets (date);
 
-PRAGMA user_version = 2;
+PRAGMA user_version = 3;

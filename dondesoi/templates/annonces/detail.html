@@ -26,7 +26,7 @@
   <p class="muted">
     {% if annonce.kind == 'besoin' and g.user %}
       <a href="{{ url_for('auth.membre', user_id=auteur.id) }}">{{ auteur.display_name }}</a>,
-    {% elif annonce.kind == 'besoin' %}Un membre, {% else %}Proposé par un membre, {% endif %}{{ annonce.city }}
+    {% elif annonce.kind == 'besoin' %}Un membre, {% else %}Proposé par un membre, {% endif %}{{ annonce.city }}{% if distance is not none %} · à {{ '%.0f'|format(distance) if distance >= 1 else "moins d'un" }} km de chez vous{% endif %}
   </p>
   {% if annonce.kind == 'besoin' and nb_prieres %}
     <p class="small muted">{{ nb_prieres }} membre{{ 's' if nb_prieres > 1 }} porte{{ 'nt' if nb_prieres > 1 }} cette intention dans la prière.</p>

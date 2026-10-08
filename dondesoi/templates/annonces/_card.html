@@ -12,7 +12,7 @@
   <h3><a href="{{ url_for('annonces.detail', annonce_id=a.id) }}">{{ a.title }}</a></h3>
   {% if a.description %}<p class="muted small">{{ a.description|truncate(140) }}</p>{% endif %}
   <p class="small muted">
-    {% if a.kind == 'besoin' and g.user %}{{ a.display_name }}, {% else %}Un membre, {% endif %}{{ a.city }}
+    {% if a.kind == 'besoin' and g.user %}{{ a.display_name }}, {% else %}Un membre, {% endif %}{{ a.city }}{% if a.distance is not none and a.distance is defined %} · à {{ '%.0f'|format(a.distance) if a.distance >= 1 else "moins d'un" }} km{% endif %}
     {% if a.nb_prieres %} · {{ a.nb_prieres }} prie{{ 'nt' if a.nb_prieres > 1 }} pour cette intention{% endif %}
   </p>
 </article>

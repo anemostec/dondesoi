@@ -18,7 +18,7 @@ from flask import (Blueprint, abort, current_app, flash, g, redirect, render_tem
                    send_from_directory, url_for)
 
 from .db import get_db
-from .matching import normalize_city, trajets_pour_don
+from .matching import meme_endroit, trajets_pour_don
 from .notifications import notify
 from .photos import COVER_SQL, PhotoInvalide, save_photo, thumb_name
 from .security import login_required
@@ -141,7 +141,7 @@ def detail(don_id):
            "can_write": uid in participants(don, trajet) and don["status"] != "annule"}
     if is_donor:
         ctx["receiver"] = receiver
-        ctx["meme_ville"] = normalize_city(donor["city"]) == normalize_city(receiver["city"])
+        ctx["meme_ville"], ctx["distance"] = meme_endroit(donor, receiver)
         if don["status"] == "en_cours" and don["transport_status"] in (None, "refuse"):
             ctx["trajets"] = trajets_pour_don(db, donor, receiver)
     if is_transporter:

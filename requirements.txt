@@ -1,2 +1,5 @@
 Flask>=3.0
 Pillow>=10.0
+# Sens des mots (facultatif) : sans fastembed, la mise en relation compare seulement les mots.
+# Le modèle (~220 Mo) est téléchargé au premier usage dans DONDESOI_MODEL_CACHE.
+fastembed>=0.3

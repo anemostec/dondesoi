@@ -18,10 +18,30 @@ def app(tmp_path):
         "DATABASE": str(tmp_path / "test.sqlite"),
         "UPLOAD_FOLDER": str(tmp_path / "uploads"),
         "MAIL_BACKEND": "memory",
+        "GEOCODER": "none",
+        "SEMANTIC_MODEL": "",
     })
+    app.extensions["geocoder"] = FakeGeocoder()
     with app.app_context():
         init_db()
     return app
+
+
+# Coordonnées réelles approximatives, pour tester sans réseau.
+VILLES = {
+    "lyon": (45.758, 4.835), "villeurbanne": (45.767, 4.880), "grenoble": (45.188, 5.724),
+    "paris": (48.857, 2.352), "valence": (44.933, 4.892), "marseille": (43.296, 5.370),
+}
+
+
+class FakeGeocoder:
+    def __init__(self):
+        self.calls = []
+
+    def __call__(self, city, postal_code):
+        self.calls.append(city)
+        key = city.lower()
+        return (city, *VILLES[key]) if key in VILLES else None
 
 
 def csrf(client, path="/connexion"):
@@ -195,13 +215,17 @@ def test_migration_base_existante(tmp_path):
             display_name TEXT, city TEXT, postal_code TEXT DEFAULT '', bio TEXT DEFAULT '',
             contact TEXT DEFAULT '', charter_accepted_at TEXT, created_at TEXT);
         CREATE TABLE dons (id INTEGER PRIMARY KEY);
+        CREATE TABLE annonces (id INTEGER PRIMARY KEY);
+        CREATE TABLE trajets (id INTEGER PRIMARY KEY);
     """)
     db.close()
     create_app({"SECRET_KEY": "t", "DATABASE": str(path), "UPLOAD_FOLDER": str(tmp_path)})
     db = sqlite3.connect(path)
     assert db.execute("PRAGMA user_version").fetchone()[0] == len(MIGRATIONS)
     assert "email_notifications" in [r[1] for r in db.execute("PRAGMA table_info(users)")]
-    db.execute("SELECT * FROM messages, notifications")
+    db.execute("SELECT * FROM messages, notifications, annonce_photos, prieres, lieux, "
+               "annonce_vecteurs")
+    assert "lat" in [r[1] for r in db.execute("PRAGMA table_info(annonces)")]
 
 
 def reset_link(app):
@@ -406,3 +430,155 @@ def test_photo_depuis_le_telephone(app):
         assert get_db().execute("SELECT COUNT(*) FROM annonce_photos").fetchone()[0] == 2
     for path in ("/static/photos.js", "/static/manifest.webmanifest", "/static/icons/icon-192.png"):
         assert client.get(path).status_code == 200
+
+
+
+# --- Distance réelle et sens des mots ------------------------------------------------
+
+def test_geocodage_mis_en_cache(app):
+    client = app.test_client()
+    register(client, "a@ex.fr", "Anne", "Villeurbanne")
+    post_annonce(client, "don", "objet", "Table")              # même ville que le membre
+    post_annonce(client, "don", "objet", "Chaise", "")          # idem
+    with app.app_context():
+        user = get_db().execute("SELECT lat, lon FROM users").fetchone()
+        assert user["lat"] == pytest.approx(45.767)
+        assert get_db().execute("SELECT COUNT(*) FROM annonces WHERE lat IS NOT NULL").fetchone()[0] == 2
+    assert app.extensions["geocoder"].calls == ["Villeurbanne"]   # une seule question au service
+
+
+def test_api_geo_gouv(app, monkeypatch):
+    """Lecture de la réponse de geo.api.gouv.fr : on garde la commune au bon nom."""
+    import json as _json
+    from dondesoi import geo
+    payload = [{"nom": "Saint-Genis-Laval", "centre": {"coordinates": [4.79, 45.69]}},
+               {"nom": "Lyon", "centre": {"coordinates": [4.835, 45.758]}}]
+
+    class Resp(io.BytesIO):
+        def __enter__(self): return self
+        def __exit__(self, *a): pass
+    seen = {}
+    def fake_urlopen(req, timeout):
+        seen["url"] = req.full_url
+        return Resp(_json.dumps(payload).encode())
+    monkeypatch.setattr(geo.urllib.request, "urlopen", fake_urlopen)
+    with app.app_context():
+        assert geo._api_geocode("Lyon", "") == ("Lyon", 45.758, 4.835)
+    assert seen["url"].startswith("https://geo.api.gouv.fr/communes?nom=Lyon")
+
+
+def make_users_and_annonces(app, rows):
+    """rows : (ville, kind, category, title, description). Retourne les ids d'annonces."""
+    from dondesoi.geo import coords_or_none
+    ids = []
+    with app.app_context():
+        db = get_db()
+        for i, (city, kind, cat, title, desc) in enumerate(rows):
+            lat, lon = coords_or_none(city)
+            uid = db.execute("INSERT INTO users (email, password_hash, display_name, city, lat, lon, "
+                             "charter_accepted_at) VALUES (?, 'x', ?, ?, ?, ?, datetime('now'))",
+                             (f"u{i}@ex.fr", f"U{i}", city, lat, lon)).lastrowid
+            ids.append(db.execute("INSERT INTO annonces (user_id, kind, category, title, description, "
+                                  "city, lat, lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                                  (uid, kind, cat, title, desc, city, lat, lon)).lastrowid)
+        db.commit()
+    return ids
+
+
+def candidats(app, offre_id):
+    with app.app_context():
+        db = get_db()
+        offre = db.execute("SELECT * FROM annonces WHERE id = ?", (offre_id,)).fetchone()
+        return candidats_pour_offre(db, offre)
+
+
+def test_distance_departage(app):
+    offre, paris, villeurbanne, voisin = make_users_and_annonces(app, [
+        ("Lyon", "don", "objet", "Table en bois", ""),
+        ("Paris", "besoin", "objet", "Table", ""),
+        ("Villeurbanne", "besoin", "objet", "Table", ""),
+        ("Villeurbanne", "besoin", "savoir", "Cours de guitare", ""),   # proche mais sans rapport
+    ])
+    c = candidats(app, offre)
+    assert [x["besoin"]["id"] for x in c] == [villeurbanne, paris]   # le voisin sans rapport est exclu
+    assert "à 4 km" in c[0]["reasons"] and "à 392 km" in c[1]["reasons"]
+
+
+def test_distance_ignoree_pour_ce_qui_se_donne_a_distance(app):
+    offre, besoin = make_users_and_annonces(app, [
+        ("Lyon", "don", "priere", "Je prie pour vos intentions", ""),
+        ("Marseille", "besoin", "priere", "Priez pour ma mère malade", ""),
+    ])
+    c = candidats(app, offre)
+    assert len(c) == 1 and not any("km" in r for r in c[0]["reasons"])
+
+
+class FakeEmbedder:
+    """Vecteurs à 3 dimensions : (enfant, meuble, autre)."""
+    name = "fake"
+    GROUPES = {"landau": 0, "poussette": 0, "bureau": 1, "table": 1}
+
+    def embed(self, texts):
+        import numpy as np
+        out = []
+        for t in texts:
+            v = np.array([0.0, 0.0, 0.2], dtype="float32")
+            for mot, axe in self.GROUPES.items():
+                if mot in t.lower():
+                    v[axe] = 1.0
+            out.append(v / np.linalg.norm(v))
+        return out
+
+
+def test_sens_des_mots(app):
+    app.extensions["embedder"] = FakeEmbedder()
+    offre, poussette, bureau = make_users_and_annonces(app, [
+        ("Lyon", "don", "autre", "Landau", "très bon état"),
+        ("Lyon", "besoin", "objet", "Poussette", "pour notre fille"),
+        ("Lyon", "besoin", "objet", "Bureau", "pour étudier"),
+    ])
+    c = candidats(app, offre)
+    # Aucun mot ni catégorie en commun : seul le sens rapproche landau et poussette.
+    assert [x["besoin"]["id"] for x in c] == [poussette]
+    assert "sens très proche" in c[0]["reasons"]
+    with app.app_context():   # les vecteurs sont gardés en base
+        assert get_db().execute("SELECT COUNT(*) FROM annonce_vecteurs").fetchone()[0] == 3
+
+
+def test_trajet_sur_le_chemin(app):
+    from datetime import date, timedelta
+    from dondesoi.geo import coords_or_none
+    from dondesoi.matching import trajets_pour_don
+    demain = (date.today() + timedelta(days=1)).isoformat()
+    with app.app_context():
+        db = get_db()
+        def user(city):
+            lat, lon = coords_or_none(city)
+            uid = db.execute("INSERT INTO users (email, password_hash, display_name, city, lat, lon, "
+                             "charter_accepted_at) VALUES (?, 'x', ?, ?, ?, ?, datetime('now'))",
+                             (f"{city}@ex.fr", city, city, lat, lon)).lastrowid
+            return db.execute("SELECT * FROM users WHERE id = ?", (uid,)).fetchone()
+        def trajet(owner, a, b):
+            (fa, fo), (ta, to) = coords_or_none(a), coords_or_none(b)
+            db.execute("INSERT INTO trajets (user_id, from_city, to_city, date, from_lat, from_lon, "
+                       "to_lat, to_lon) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                       (owner["id"], a, b, demain, fa, fo, ta, to))
+        lyon, valence, paris, voyageur = user("Lyon"), user("Valence"), user("Paris"), user("Grenoble")
+        trajet(voyageur, "Villeurbanne", "Marseille")   # passe par Lyon puis Valence
+        trajet(voyageur, "Marseille", "Lyon")           # mauvais sens
+        found = trajets_pour_don(db, lyon, valence)
+        assert len(found) == 1 and found[0][0]["to_city"] == "Marseille"
+        assert "de chez vous" in found[0][1]
+        assert trajets_pour_don(db, lyon, paris) == []   # Paris n'est pas sur la route
+
+
+def test_filtre_rayon(app):
+    client = app.test_client()
+    register(client, "a@ex.fr", "Anne", "Lyon")
+    make_users_and_annonces(app, [
+        ("Villeurbanne", "don", "objet", "Table proche", ""),
+        ("Grenoble", "don", "objet", "Table lointaine", ""),
+    ])
+    page = client.get("/annonces/?rayon=15").get_data(as_text=True)
+    assert "Table proche" in page and "Table lointaine" not in page
+    assert "à 4 km" in page

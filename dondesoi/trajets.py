@@ -3,6 +3,7 @@ from datetime import date
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
 from .db import get_db
+from .geo import coords_or_none
 from .security import login_required
 
 bp = Blueprint("trajets", __name__, url_prefix="/trajets")
@@ -21,9 +22,14 @@ def mes_trajets():
         elif day < date.today().isoformat():
             flash("La date est déjà passée.", "erreur")
         else:
+            from_lat, from_lon = coords_or_none(from_city)
+            to_lat, to_lon = coords_or_none(to_city)
             db.execute(
-                "INSERT INTO trajets (user_id, from_city, to_city, date, note) VALUES (?, ?, ?, ?, ?)",
-                (g.user["id"], from_city, to_city, day, f.get("note", "").strip()),
+                """INSERT INTO trajets (user_id, from_city, to_city, date, note,
+                                        from_lat, from_lon, to_lat, to_lon)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (g.user["id"], from_city, to_city, day, f.get("note", "").strip(),
+                 from_lat, from_lon, to_lat, to_lon),
             )
             db.commit()
             flash("Trajet enregistré. Merci : un don pourra peut-être voyager avec vous.")

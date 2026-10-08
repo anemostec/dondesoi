@@ -13,7 +13,7 @@ L'esprit du projet est décrit dans `../don_de_soi.tex` et sur la page « Charte
 | Chacun est donneur ET receveur | Le tableau de bord invite à publier un don si l'on n'a que des besoins, et inversement ; engagement à l'inscription |
 | Don entièrement gratuit, sans argent entre membres | Pas de catégorie « argent » ; les annonces mentionnant somme, virement, PayPal… sont refusées (`annonces.py`) |
 | Besoins de première nécessité prioritaires | Catégories essentielles + case « première nécessité » ; toujours en tête des listes et des suggestions (`matching.py`) |
-| L'IA met en relation donneurs et receveurs | `matching.py` : score explicable (catégorie, mots communs, ville), raisons affichées au donateur |
+| L'IA met en relation donneurs et receveurs | `matching.py` : score explicable affiché au donateur. Pertinence = même catégorie + mots communs + **sens proche** (modèle open source MiniLM multilingue exécuté sur le serveur, `sens.py`) ; puis **distance réelle** pour départager (`geo.py`), sauf prière, écoute et savoir qui se donnent à distance. Un besoin sans pertinence n'est jamais proposé, même tout proche |
 | Le donateur est seul décisionnaire | Les suggestions ne font que proposer ; les membres peuvent signaler leur intérêt, le donateur choisit |
 | Le donateur voit le profil et les avis du receveur | Page « Donner à… » (`dons/preparer.html`) |
 | Le receveur ne voit que ce que le donateur partage, après le don | L'auteur d'un don n'est jamais affiché ; le receveur ne voit que le champ `shared_info` |
@@ -26,7 +26,7 @@ L'esprit du projet est décrit dans `../don_de_soi.tex` et sur la page « Charte
 | Les œuvres de miséricorde (Mt 25,35-36) | Catégorie « Visite » (personne seule, malade, détenue) ajoutée aux besoins prioritaires |
 | Dignité de celui qui demande | Le nom de l'auteur d'un besoin n'est visible que des membres |
 | L'Évangile au cœur du site | Passages placés là où ils éclairent le geste, « Parole du jour » (`evangile.py`, Louis Segond 1910, domaine public) |
-| Trajets pour éviter les frais d'expédition | `trajets.py` + proposition des voyageurs de la ville du donateur vers celle du receveur |
+| Trajets pour éviter les frais d'expédition | `trajets.py` : sont proposés les trajets qui passent à moins de 15 km du donateur puis du receveur, dans le bon sens |
 | Avis après le don, droit de réponse, sans blocage | Table `avis` ; visibles sur le profil du receveur ; ils n'empêchent jamais un don |
 | Pas de prosélytisme, liberté de partir | Pages « Charte » et « À qui s'adresse Don de soi » |
 | Pas de publicité, partenaires gratuits seulement | Page « Partenaires » |
@@ -58,9 +58,14 @@ Toute variable d'environnement `DONDESOI_XXX` remplace le réglage `XXX` :
 | `DONDESOI_MAIL_FROM` | expéditeur des e-mails |
 | `DONDESOI_SOURCE_URL` | lien vers le code source, affiché en pied de page (exigé par l'AGPL) ; par défaut ce dépôt. Une version modifiée mise en ligne doit pointer vers son propre code |
 | `DONDESOI_TIMEZONE` | fuseau d'affichage des heures (défaut `Europe/Paris`) |
+| `DONDESOI_GEOCODER` | `api` (défaut : coordonnées des villes via [geo.api.gouv.fr](https://geo.api.gouv.fr), service public ; seuls le nom de ville et le code postal lui sont envoyés, une fois par ville) ou `none` |
+| `DONDESOI_SEMANTIC_MODEL` | modèle de sens (défaut `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, Apache 2.0) ; vide pour désactiver |
+| `DONDESOI_MODEL_CACHE` | dossier du modèle téléchargé (défaut `~/.cache/dondesoi/models`) |
 | `DONDESOI_PASSWORD_RESET_MAX_AGE` | durée de validité du lien « mot de passe oublié », en secondes (défaut 3600) |
 
 Les bases existantes sont mises à jour automatiquement au démarrage (`MIGRATIONS` dans `db.py`).
+`flask --app dondesoi localiser` complète les coordonnées et les vecteurs de sens manquants
+(utile après une mise à jour, ou si geo.api.gouv.fr était injoignable).
 
 ## Organisation du code
 
@@ -69,6 +74,9 @@ dondesoi/
   __init__.py      création de l'application, catégories
   schema.sql       base de données
   matching.py      mise en relation (receveurs, offres, trajets)
+  sens.py          sens des mots (modèle d'embeddings local)
+  geo.py           coordonnées des villes, distances, trajets « sur le chemin »
+  textes.py        normalisation des textes et des villes
   auth.py          inscription avec engagements, profil, page membre
   annonces.py      dons et besoins
   dons.py          transaction, messagerie, transport, avis
@@ -83,8 +91,7 @@ tests/
 
 ## Pistes pour la suite
 
-- Mise en relation sémantique (modèle d'embeddings open source), distance géographique réelle,
-  apprentissage des préférences du donateur
+- Apprentissage des préférences du donateur ; distance par la route plutôt qu'à vol d'oiseau
 - Récapitulatif quotidien par e-mail plutôt qu'un e-mail par événement
 - Trajets avec étapes, et trajets réguliers
 - Suppression de compte, modération, signalement d'un message

@@ -4,11 +4,14 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 
 from . import CATEGORY_LABELS, ESSENTIAL_CATEGORIES
 from .db import get_db
+from .geo import coords_or_none, distance_rows
 from .matching import candidats_pour_offre, is_essential, offres_pour_besoin
 from .notifications import notify
 from .photos import (COVER_SQL, MAX_PHOTOS_PAR_ANNONCE, PhotoInvalide, delete_photo,
                      save_photos)
 from .security import login_required
+from .sens import oublier
+from .textes import normalize_city
 
 bp = Blueprint("annonces", __name__, url_prefix="/annonces")
 
@@ -60,6 +63,17 @@ def validate_form(form):
     return None
 
 
+def annonce_coords(city):
+    """Coordonnées de la ville de l'annonce (celles du membre si c'est sa ville)."""
+    if normalize_city(city) == normalize_city(g.user["city"]) and g.user["lat"] is not None:
+        return g.user["lat"], g.user["lon"]
+    return coords_or_none(city)
+
+
+# Rayons proposés dans la liste des annonces, en km.
+RAYONS = (5, 15, 30, 100)
+
+
 def essential_from_form(kind, form):
     return int(kind == "besoin" and (form.get("essential") == "1"
                                      or form.get("category") in ESSENTIAL_CATEGORIES))
@@ -89,9 +103,21 @@ def liste():
                "a.created_at DESC" % ",".join("?" * len(ESSENTIAL_CATEGORIES)))
     params += sorted(ESSENTIAL_CATEGORIES)
 
-    annonces = get_db().execute(" ".join(sql), params).fetchall()
+    rows = get_db().execute(" ".join(sql), params).fetchall()
+
+    # Distance depuis chez le membre connecté, et filtre « dans un rayon de ».
+    rayon = request.args.get("rayon", type=int)
+    localise = g.user is not None and g.user["lat"] is not None
+    annonces = []
+    for row in rows:
+        a = dict(row)
+        a["distance"] = distance_rows(g.user, row) if localise else None
+        if rayon and localise and (a["distance"] is None or a["distance"] > rayon):
+            continue
+        annonces.append(a)
     return render_template("annonces/liste.html", annonces=annonces, kind=kind,
-                           category=category, q=q)
+                           category=category, q=q, rayon=rayon, rayons=RAYONS,
+                           localise=localise)
 
 
 @bp.route("/nouvelle", methods=("GET", "POST"))
@@ -112,13 +138,15 @@ def nouvelle():
 
         if error is None:
             db = get_db()
+            city = form.get("city", "").strip() or g.user["city"]
+            lat, lon = annonce_coords(city)
             cur = db.execute(
                 """INSERT INTO annonces (user_id, kind, category, title, description, city,
-                                         essential)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                                         essential, lat, lon)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (g.user["id"], kind, form["category"], form["title"].strip(),
-                 form.get("description", "").strip(),
-                 form.get("city", "").strip() or g.user["city"], essential_from_form(kind, form)),
+                 form.get("description", "").strip(), city, essential_from_form(kind, form),
+                 lat, lon),
             )
             add_photos(db, cur.lastrowid, filenames)
             db.commit()
@@ -157,13 +185,15 @@ def modifier(annonce_id):
                     f"{e} Cette annonce a déjà {remaining} photo(s) sur {MAX_PHOTOS_PAR_ANNONCE}.")
         if error is None:
             db = get_db()
+            city = form.get("city", "").strip() or g.user["city"]
+            lat, lon = annonce_coords(city)
             db.execute(
                 """UPDATE annonces SET title = ?, description = ?, category = ?, city = ?,
-                                       essential = ? WHERE id = ?""",
+                                       essential = ?, lat = ?, lon = ? WHERE id = ?""",
                 (form["title"].strip(), form.get("description", "").strip(), form["category"],
-                 form.get("city", "").strip() or g.user["city"],
-                 essential_from_form(annonce["kind"], form), annonce_id),
+                 city, essential_from_form(annonce["kind"], form), lat, lon, annonce_id),
             )
+            oublier(db, annonce_id)   # le texte a pu changer : le sens sera recalculé
             for p in photos:
                 if p["id"] in to_delete:
                     db.execute("DELETE FROM annonce_photos WHERE id = ?", (p["id"],))
@@ -204,6 +234,7 @@ def detail(annonce_id):
     auteur = db.execute("SELECT * FROM users WHERE id = ?", (annonce["user_id"],)).fetchone()
     is_owner = g.user is not None and g.user["id"] == annonce["user_id"]
     ctx = {"annonce": annonce, "auteur": auteur, "is_owner": is_owner,
+           "distance": distance_rows(g.user, annonce) if g.user is not None and not is_owner else None,
            "photos": get_photos(annonce_id),
            "nb_prieres": db.execute("SELECT COUNT(*) FROM prieres WHERE annonce_id = ?",
                                     (annonce_id,)).fetchone()[0]}

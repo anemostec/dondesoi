@@ -26,7 +26,11 @@
   {% if is_donor and don.status == 'en_cours' %}
   <h2>Acheminement</h2>
   {% if meme_ville %}
-    <p>Vous habitez la même ville : vous pouvez vous retrouver directement.</p>
+    {% if distance is not none %}
+      <p>Vous habitez à {{ '%.0f'|format(distance) if distance >= 1 else "moins d'un" }} km l'un de l'autre : vous pouvez vous retrouver directement.</p>
+    {% else %}
+      <p>Vous habitez la même ville : vous pouvez vous retrouver directement.</p>
+    {% endif %}
   {% elif trajet and don.transport_status in ('demande', 'accepte') %}
     <p>{{ trajet.display_name }} fait le trajet {{ trajet.from_city }} → {{ trajet.to_city }} le
       {{ trajet.date }} :
@@ -34,11 +38,12 @@
     {% if don.transport_status == 'accepte' and trajet.contact %}<p class="small">Contact : {{ trajet.contact }}</p>{% endif %}
   {% elif trajets %}
     {% if don.transport_status == 'refuse' %}<p class="muted small">Le voyageur sollicité n'a pas pu accepter.</p>{% endif %}
-    <p>Des membres font le trajet de chez vous vers {{ receiver.city }} :</p>
+    <p>Des membres font un trajet qui passe près de chez vous puis de {{ receiver.city }} :</p>
     <ul class="list panel">
-      {% for t in trajets %}
+      {% for t, explication in trajets %}
       <li>
         <strong>{{ t.display_name }}</strong> · {{ t.from_city }} → {{ t.to_city }}, le {{ t.date }}
+        {% if explication %}<div class="small">{{ explication }}</div>{% endif %}
         {% if t.note %}<div class="small muted">{{ t.note }}</div>{% endif %}
         <form method="post" action="{{ url_for('dons.transport', don_id=don.id) }}" style="margin-top:.4rem">
           <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
@@ -51,7 +56,7 @@
     </ul>
     <p class="hint">Le voyageur verra ce que vous avez partagé ci-dessus et la ville du receveur.</p>
   {% else %}
-    <p class="muted">Aucun trajet prévu de votre ville vers {{ receiver.city }} pour l'instant.</p>
+    <p class="muted">Aucun trajet prévu ne passe près de chez vous puis de {{ receiver.city }} pour l'instant.</p>
   {% endif %}
 
   <div class="actions">

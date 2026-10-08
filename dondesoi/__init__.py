@@ -58,6 +58,13 @@ def create_app(test_config=None):
         SOURCE_URL="https://github.com/anemostec/dondesoi",
         TIMEZONE="Europe/Paris",
         PASSWORD_RESET_MAX_AGE=3600,
+        # Distance réelle : coordonnées des villes via geo.api.gouv.fr (« none » pour désactiver).
+        GEOCODER="api",
+        GEO_API_URL="https://geo.api.gouv.fr",
+        # Sens des mots : modèle d'embeddings open source exécuté sur le serveur
+        # (chaîne vide pour désactiver). Téléchargé une fois dans MODEL_CACHE.
+        SEMANTIC_MODEL="sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        MODEL_CACHE="~/.cache/dondesoi/models",
     )
     # Toute variable d'environnement DONDESOI_XXX remplace la valeur XXX
     # (ex. DONDESOI_MAIL_BACKEND=smtp, DONDESOI_SMTP_HOST=...).

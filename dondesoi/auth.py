@@ -6,6 +6,7 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .db import get_db
+from .geo import coords_or_none
 from .notifications import send_email
 from .photos import COVER_SQL
 from .security import login_required
@@ -42,13 +43,15 @@ def inscription():
 
         if error is None:
             db = get_db()
+            postal_code = form.get("postal_code", "").strip()
+            lat, lon = coords_or_none(city, postal_code)
             try:
                 cur = db.execute(
                     """INSERT INTO users (email, password_hash, display_name, city, postal_code,
-                                          charter_accepted_at)
-                       VALUES (?, ?, ?, ?, ?, datetime('now'))""",
-                    (email, generate_password_hash(password), display_name, city,
-                     form.get("postal_code", "").strip()),
+                                          lat, lon, charter_accepted_at)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))""",
+                    (email, generate_password_hash(password), display_name, city, postal_code,
+                     lat, lon),
                 )
                 db.commit()
             except db.IntegrityError:
@@ -167,13 +170,15 @@ def profil():
             flash("Le prénom (ou pseudonyme) et la ville sont nécessaires.", "erreur")
         else:
             db = get_db()
+            postal_code = f.get("postal_code", "").strip()
+            lat, lon = coords_or_none(city, postal_code)
             db.execute(
                 """UPDATE users SET display_name = ?, city = ?, postal_code = ?, bio = ?, contact = ?,
-                                    email_notifications = ?
+                                    email_notifications = ?, lat = ?, lon = ?
                    WHERE id = ?""",
-                (display_name, city, f.get("postal_code", "").strip(), f.get("bio", "").strip(),
+                (display_name, city, postal_code, f.get("bio", "").strip(),
                  f.get("contact", "").strip(), int(bool(f.get("email_notifications"))),
-                 g.user["id"]),
+                 lat, lon, g.user["id"]),
             )
             db.commit()
             flash("Profil mis à jour.")

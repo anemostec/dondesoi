@@ -57,8 +57,20 @@
 {{ verset('reprendre_son_frere') }}
 
 <h2>Une mise en relation transparente</h2>
-<p>Cette première version du système de mise en relation est volontairement simple et
-  explicable : elle compare les catégories, les mots utilisés et les villes, et place toujours en
-  premier les besoins de première nécessité. Son code est ouvert ; chacun peut l'améliorer.</p>
+<p>La mise en relation reste explicable : chaque suggestion affiche ses raisons. Elle place
+  toujours en premier les besoins de première nécessité, puis elle regarde :</p>
+<ul>
+  <li><strong>si le don répond au besoin</strong> : même catégorie, mots en commun, et sens proche.
+    Un petit modèle d'intelligence artificielle open source, qui tourne sur notre serveur sans
+    rien envoyer à l'extérieur, comprend par exemple qu'un landau répond à qui cherche une
+    poussette ;</li>
+  <li><strong>la distance réelle</strong> entre vous, pour départager : un voisin passe avant une
+    personne à l'autre bout du pays. La distance ne compte pas pour ce qui se donne à distance
+    (prière, écoute, cours en visio), et un besoin sans rapport n'est jamais proposé, même tout
+    proche.</li>
+</ul>
+<p>Pour les trajets, le site propose les voyageurs qui passent près de chez le donateur puis près
+  du receveur, et pas seulement ceux qui partent de la même ville. Les coordonnées des villes
+  viennent du service public geo.api.gouv.fr. Le code est ouvert ; chacun peut l'améliorer.</p>
 </div>
 {% endblock %}
