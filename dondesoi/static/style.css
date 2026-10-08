@@ -53,9 +53,10 @@ main.wrap { min-height: 70vh; padding-bottom: 3rem; }
 .site-header { background: var(--surface); border-bottom: 1px solid var(--border); }
 .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem;
   flex-wrap: wrap; padding-top: .7rem; padding-bottom: .7rem; }
-.logo { font-family: var(--serif); font-size: 1.35rem; font-weight: 700; color: var(--text);
+.logo { display: inline-flex; align-items: center; gap: .5rem;
+  font-family: var(--serif); font-size: 1.35rem; font-weight: 700; color: var(--text);
   text-decoration: none; }
-.logo-mark { color: var(--accent); }
+.logo-mark { width: .85rem; height: 1.3rem; fill: var(--accent); flex: none; }
 nav { display: flex; align-items: center; gap: .3rem 1.1rem; flex-wrap: wrap; }
 nav a { color: var(--text); text-decoration: none; }
 nav a:hover { color: var(--accent); }

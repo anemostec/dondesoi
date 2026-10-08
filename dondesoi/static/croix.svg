@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <title>Don de soi</title>
+  <!-- Croix latine : le bras du bas est le plus long. -->
+  <rect x="13.5" y="1" width="5" height="30" rx="1" fill="#a4472d"/>
+  <rect x="5" y="8.5" width="22" height="5" rx="1" fill="#a4472d"/>
+</svg>

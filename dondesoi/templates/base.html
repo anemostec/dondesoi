@@ -4,12 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{% endblock %}{% if self.title() %} · {% endif %}Don de soi</title>
+  <link rel="icon" href="{{ url_for('static', filename='croix.svg') }}" type="image/svg+xml">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 <header class="site-header">
   <div class="wrap header-inner">
-    <a class="logo" href="{{ url_for('main.accueil') }}"><span class="logo-mark" aria-hidden="true">✚</span> Don de soi</a>
+    <a class="logo" href="{{ url_for('main.accueil') }}"><svg class="logo-mark" viewBox="0 0 20 30" aria-hidden="true"><rect x="7.5" y="0" width="5" height="30" rx="1"/><rect x="0" y="7" width="20" height="5" rx="1"/></svg>Don de soi</a>
     <nav>
       <a href="{{ url_for('annonces.liste') }}">Annonces</a>
       <a href="{{ url_for('main.fonctionnement') }}">Fonctionnement</a>
@@ -49,7 +50,10 @@
       <a href="{{ url_for('main.contribuer') }}">Contribuer au code</a> ·
       <a href="{{ SOURCE_URL or url_for('main.contribuer') }}">Code source (licence AGPL v3)</a>
     </p>
-    <p class="small">Citations de l'Évangile : traduction Louis Segond (1910), domaine public.</p>
+    <p class="small">Citations de l'Évangile : traduction Louis Segond (1910), domaine public.
+      Le code de ce site a été écrit par Claude, l'intelligence artificielle d'Anthropic, à la
+      demande et sous la direction de l'équipe Don de soi ;
+      <a href="{{ url_for('main.contribuer') }}#ia">Don de soi est ouvert à l'intelligence artificielle</a>.</p>
   </div>
 </footer>
 </body>

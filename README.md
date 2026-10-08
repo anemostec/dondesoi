@@ -91,6 +91,14 @@ tests/
 - Structure associative et page de transparence pour le don d'argent
 - Déploiement (gunicorn + reverse proxy), application mobile
 
+## Don de soi et l'intelligence artificielle
+
+Le code de ce site a été écrit par **Claude**, l'IA d'Anthropic, à la demande et sous la direction
+de l'équipe Don de soi. Le projet est très ouvert à l'intelligence artificielle, vue comme un talent
+à faire fructifier au service de tous (Mt 25,14-30) : elle propose, l'humain décide ; elle reste
+transparente et n'est jamais utilisée pour la publicité ou le profilage. Les contributions faites
+avec l'aide d'une IA sont les bienvenues : signalez-le et relisez ce que vous proposez.
+
 ## Licence
 
 GNU Affero General Public License v3 (voir `LICENSE`) : toute version du site mise en ligne,

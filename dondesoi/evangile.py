@@ -89,6 +89,10 @@ PASSAGES = {
     "maison_de_trafic": ("Ne faites pas de la maison de mon Père une maison de trafic.", "Jn 2,16"),
     "zachee": ("Voici, Seigneur, je donne aux pauvres la moitié de mes biens.", "Lc 19,8"),
 
+    # Faire fructifier les talents reçus.
+    "talents": ("C'est bien, bon et fidèle serviteur ; tu as été fidèle en peu de chose, je te "
+                "confierai beaucoup.", "Mt 25,21"),
+
     # L'accueil et la liberté.
     "pas_contre_nous": ("Qui n'est pas contre nous est pour nous.", "Mc 9,40"),
     "vous_en_aller": ("Et vous, ne voulez-vous pas aussi vous en aller ?", "Jn 6,67"),
