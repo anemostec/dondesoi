@@ -20,7 +20,8 @@
 {% endif %}
 
 <div class="actions">
-  <a class="btn" href="{{ url_for('annonces.nouvelle', kind='don') }}">Je propose un don</a>
+  <a class="btn" href="{{ url_for('annonces.nouvelle', kind='don', categorie='objet') }}"><span aria-hidden="true">📷</span> Photographier un objet à donner</a>
+  <a class="btn btn-ghost" href="{{ url_for('annonces.nouvelle', kind='don') }}">Je propose un don</a>
   <a class="btn btn-ghost" href="{{ url_for('annonces.nouvelle', kind='besoin') }}">J'exprime un besoin</a>
   <a class="btn btn-ghost" href="{{ url_for('trajets.mes_trajets') }}">Mes trajets</a>
   <a class="btn btn-ghost" href="{{ url_for('auth.profil') }}">Mon profil</a>

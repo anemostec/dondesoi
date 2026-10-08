@@ -7,7 +7,8 @@
     écoute, une prière. Gratuitement, toujours.</p>
   <div class="actions">
     {% if g.user %}
-      <a class="btn" href="{{ url_for('annonces.nouvelle', kind='don') }}">Je propose un don</a>
+      <a class="btn" href="{{ url_for('annonces.nouvelle', kind='don', categorie='objet') }}"><span aria-hidden="true">📷</span> Photographier un objet à donner</a>
+      <a class="btn btn-ghost" href="{{ url_for('annonces.nouvelle', kind='don') }}">Je propose un don</a>
       <a class="btn btn-ghost" href="{{ url_for('annonces.nouvelle', kind='besoin') }}">J'exprime un besoin</a>
     {% else %}
       <a class="btn" href="{{ url_for('auth.inscription') }}">Rejoindre Don de soi</a>

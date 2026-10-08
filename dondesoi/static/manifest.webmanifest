@@ -1,0 +1,23 @@
+{
+  "name": "Don de soi",
+  "short_name": "Don de soi",
+  "description": "Donner et recevoir gratuitement : objets, services, temps, écoute, prière.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#faf6ef",
+  "theme_color": "#a4472d",
+  "icons": [
+    {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ],
+  "shortcuts": [
+    {"name": "Photographier un objet à donner", "short_name": "Photographier",
+     "url": "/annonces/nouvelle?kind=don&categorie=objet",
+     "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192"}]},
+    {"name": "Exprimer un besoin", "short_name": "Un besoin",
+     "url": "/annonces/nouvelle?kind=besoin",
+     "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192"}]}
+  ]
+}

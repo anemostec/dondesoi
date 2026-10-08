@@ -388,3 +388,21 @@ def test_versets_affiches(app):
     page = app.test_client().get("/charte").get_data(as_text=True)
     assert "Mt 6,3-4" in page and "Louis Segond" in page
     assert "Parole du jour" in app.test_client().get("/").get_data(as_text=True)
+
+
+def test_photo_depuis_le_telephone(app):
+    client = app.test_client()
+    register(client, "anne@ex.fr", "Anne", "Lyon")
+    page = client.get("/annonces/nouvelle?kind=don&categorie=objet").get_data(as_text=True)
+    # Bouton qui ouvre directement l'appareil photo, catégorie « Objet » présélectionnée.
+    assert 'capture="environment"' in page
+    assert '<option value="objet" selected>' in page
+    # Sans JavaScript, les deux champs (appareil photo et galerie) sont envoyés ensemble.
+    resp = client.post("/annonces/nouvelle", data={
+        "_csrf": csrf(client, "/annonces/nouvelle"), "kind": "don", "category": "objet",
+        "title": "Chaise", "photos": [image_file("camera.jpg"), image_file("galerie.jpg")]})
+    assert resp.status_code == 302
+    with app.app_context():
+        assert get_db().execute("SELECT COUNT(*) FROM annonce_photos").fetchone()[0] == 2
+    for path in ("/static/photos.js", "/static/manifest.webmanifest", "/static/icons/icon-192.png"):
+        assert client.get(path).status_code == 200

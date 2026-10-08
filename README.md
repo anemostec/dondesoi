@@ -19,7 +19,7 @@ L'esprit du projet est décrit dans `../don_de_soi.tex` et sur la page « Charte
 | Le receveur ne voit que ce que le donateur partage, après le don | L'auteur d'un don n'est jamais affiché ; le receveur ne voit que le champ `shared_info` |
 | Messagerie dans la même discrétion | Fil de discussion par don ; le donateur y apparaît comme « le donateur » (`dons.py`) |
 | Faciliter les mises en relation | Notifications (cloche + e-mail facultatif) : correspondance don/besoin, intérêt signalé, don reçu, message, transport, avis (`notifications.py`) |
-| Photos | Jusqu'à 6 photos par annonce, ajoutées ou retirées à tout moment ; photos dans les messages (privées) et les actions de grâce. Réencodées : métadonnées et GPS effacés (`photos.py`) |
+| Photos | Bouton « Prendre une photo » qui ouvre l'appareil du téléphone, plusieurs prises à la suite, réduction dans le téléphone avant envoi (`static/photos.js`) ; site installable sur l'écran d'accueil avec le raccourci « Photographier un objet à donner ». Jusqu'à 6 photos par annonce, ajoutées ou retirées à tout moment ; photos dans les messages (privées) et les actions de grâce. Réencodées : métadonnées et GPS effacés (`photos.py`) |
 | Prier les uns pour les autres (Mt 18,19-20) | Bouton « Je prie pour vous » sur chaque besoin, la personne en est prévenue |
 | Rendre grâce (Lc 17,15) | Après un don, mot du receveur au donateur, publiable sans aucun nom (page « Actions de grâce ») |
 | Ne pas juger, reprendre en frère, pardonner (Mt 7,1 ; 18,15.22) | Avis facultatif, précédé d'une invitation à se parler ; le donateur peut le retirer à tout moment |

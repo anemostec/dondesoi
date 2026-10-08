@@ -17,6 +17,46 @@
 <form class="stack" method="post" enctype="multipart/form-data">
   <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
   <input type="hidden" name="kind" value="{{ kind }}">
+  {% set restant = max_photos - photos|length %}
+  <fieldset class="photos-zone" data-photos data-max="{{ restant }}">
+    <legend><strong>{{ 'Photos' if not edition else 'Ajouter des photos' }}</strong>
+      <span class="hint">(facultatif, {{ max_photos }} au plus)</span></legend>
+    {% if restant > 0 %}
+    <div class="photo-buttons">
+      <label class="btn photo-btn">
+        <span aria-hidden="true">📷</span> Prendre une photo
+        <input type="file" name="photos" accept="image/*" capture="environment" data-photos-source>
+      </label>
+      <label class="btn btn-ghost photo-btn">
+        <span aria-hidden="true">🖼️</span> Choisir dans la galerie
+        <input type="file" name="photos" accept="image/*" multiple data-photos-source>
+      </label>
+    </div>
+    <input type="file" accept="image/*" multiple hidden data-photos-target data-name="photos">
+    <p class="small muted" data-photos-count aria-live="polite"></p>
+    <div class="photo-previews" data-photos-preview></div>
+    <p class="hint photos-busy">Préparation de la photo…</p>
+    {% else %}
+    <p class="hint">Cette annonce a déjà {{ max_photos }} photos : retirez-en une pour en ajouter.</p>
+    {% endif %}
+    <p class="hint">Les photos sont réduites et leurs données cachées (position GPS, appareil…)
+      sont effacées.</p>
+  </fieldset>
+
+  {% if photos %}
+  <fieldset class="panel panel-soft" style="margin:0">
+    <legend><strong>Photos actuelles</strong></legend>
+    <div class="photo-edit">
+      {% for p in photos %}
+      <label class="photo-edit-item">
+        <img src="{{ url_for('main.photo', subdir='annonces', filename=p.filename|thumb) }}" alt="">
+        <span class="check"><input type="checkbox" name="supprimer_photo" value="{{ p.id }}"> Supprimer</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  {% endif %}
+
   <div>
     <label for="title">Titre</label>
     <input type="text" id="title" name="title" required maxlength="120" value="{{ form.title or '' }}">
@@ -26,7 +66,7 @@
     <select id="category" name="category" required>
       <option value="">Choisir…</option>
       {% for key, label, _ in CATEGORIES %}
-        <option value="{{ key }}" {{ 'selected' if form.category == key }}>{{ label }}</option>
+        <option value="{{ key }}" {{ 'selected' if (form.category or request.args.get('categorie')) == key }}>{{ label }}</option>
       {% endfor %}
     </select>
   </div>
@@ -46,29 +86,11 @@
   </label>
   {% endif %}
 
-  {% if photos %}
-  <fieldset class="panel panel-soft" style="margin:0">
-    <legend><strong>Photos actuelles</strong></legend>
-    <div class="photo-edit">
-      {% for p in photos %}
-      <label class="photo-edit-item">
-        <img src="{{ url_for('main.photo', subdir='annonces', filename=p.filename|thumb) }}" alt="">
-        <span class="check"><input type="checkbox" name="supprimer_photo" value="{{ p.id }}"> Supprimer</span>
-      </label>
-      {% endfor %}
-    </div>
-  </fieldset>
-  {% endif %}
-  <div>
-    <label for="photos">{{ 'Ajouter des photos' if edition else 'Photos' }}
-      <span class="hint">(facultatif, {{ max_photos }} au plus{% if photos %}, {{ max_photos - photos|length }} encore possible{{ 's' if max_photos - photos|length > 1 }}{% endif %})</span></label>
-    <input type="file" id="photos" name="photos" accept="image/*" multiple>
-    <p class="hint">Les photos sont réduites et leurs données cachées (position GPS, appareil…) sont effacées.</p>
-  </div>
   <p class="hint">Rappel : le don d'argent entre membres n'est pas permis.</p>
   <div class="actions">
     <button class="btn">{{ 'Enregistrer' if edition else 'Publier' }}</button>
     {% if edition %}<a class="btn btn-ghost" href="{{ url_for('annonces.detail', annonce_id=annonce.id) }}">Annuler</a>{% endif %}
   </div>
 </form>
+<script src="{{ url_for('static', filename='photos.js') }}" defer></script>
 {% endblock %}
