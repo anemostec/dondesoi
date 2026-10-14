@@ -96,10 +96,11 @@ l'interface alwaysdata en « Python WSGI » (`wsgi.py`), variables d'environneme
 Mise à jour :
 
 ```bash
-ssh dondesoi@ssh-dondesoi.alwaysdata.net 'cd ~/dondesoi/app && git pull -q && DONDESOI_SEMANTIC_MODEL= ../venv/bin/flask --app dondesoi localiser'
+ssh dondesoi@ssh-dondesoi.alwaysdata.net 'cd ~/dondesoi/app && git pull -q && touch wsgi.py'
 ```
 
-puis redémarrer le site dans l'interface (Web → Sites → redémarrer).
+Le site est configuré avec `touch-reload = /home/dondesoi/dondesoi/app/wsgi.py` (réglages uWSGI
+additionnels) : toucher `wsgi.py` le recharge, et les migrations de base s'appliquent au démarrage.
 
 ## Organisation du code
 
