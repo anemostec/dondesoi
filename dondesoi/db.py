@@ -140,6 +140,10 @@ MIGRATIONS = [
         created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     """,
+    # Une parole d'Évangile différente à chaque e-mail.
+    """
+    ALTER TABLE users ADD COLUMN versets_envoyes INTEGER NOT NULL DEFAULT 0;
+    """,
 ]
 
 

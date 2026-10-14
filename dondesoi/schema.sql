@@ -30,6 +30,8 @@ CREATE TABLE users (
     lon REAL,
     -- Qui a invité ce membre (visible seulement de lui et de la personne qui l'a invité).
     invited_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    -- Nombre de paroles d'Évangile déjà reçues par e-mail (pour ne pas les répéter).
+    versets_envoyes INTEGER NOT NULL DEFAULT 0,
     charter_accepted_at TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -209,4 +211,4 @@ CREATE INDEX idx_notifications_user ON notifications (user_id, read_at);
 CREATE INDEX idx_annonces_open ON annonces (kind, status);
 CREATE INDEX idx_trajets_date ON trajets (date);
 
-PRAGMA user_version = 5;
+PRAGMA user_version = 6;

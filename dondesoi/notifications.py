@@ -52,8 +52,20 @@ def notify(user_id, body, link):
             bouton_texte="Voir sur Don de soi", bouton_url=url,
             pied=[{"texte": "Ne plus recevoir ces e-mails (Mon profil)",
                    "url": url_for("auth.profil", _external=True)}],
+            verset=prochain_verset(user_id),
         )
         send_email(user["email"], "Don de soi : " + body, text, html)
+
+
+def prochain_verset(user_id):
+    """Clé de la parole d'Évangile du prochain e-mail de ce membre : une nouvelle à chaque fois."""
+    from .evangile import cle_pour_email
+    db = get_db()
+    row = db.execute("SELECT versets_envoyes FROM users WHERE id = ?", (user_id,)).fetchone()
+    rang = row["versets_envoyes"] if row is not None else 0
+    db.execute("UPDATE users SET versets_envoyes = versets_envoyes + 1 WHERE id = ?", (user_id,))
+    db.commit()
+    return cle_pour_email(user_id if row is not None else None, rang)
 
 
 def rendre_email(titre, paragraphes=(), bouton_texte=None, bouton_url=None, citation=None,

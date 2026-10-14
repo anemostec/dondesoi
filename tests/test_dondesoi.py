@@ -753,3 +753,30 @@ def test_emails_html(app):
     assert "Voir sur Don de soi" in app.extensions["outbox"][-1]["html"]
     philippe.post("/mot-de-passe-oublie", data={"_csrf": csrf(philippe), "email": "philippe@ex.fr"})
     assert "Choisir un nouveau mot de passe" in app.extensions["outbox"][-1]["html"]
+
+
+def test_une_parole_differente_par_email(app):
+    from dondesoi.evangile import PASSAGES, POUR_EMAILS
+    assert set(POUR_EMAILS) <= set(PASSAGES)
+    client = app.test_client()
+    register(client, "anne@ex.fr", "Anne", "Lyon")
+    from dondesoi.notifications import notify
+    refs = []
+    with app.test_request_context():
+        for i in range(len(POUR_EMAILS) + 1):
+            notify(1, f"Notification {i}", f"/page/{i}")   # une page par e-mail (pas de regroupement)
+            refs.append(re.search(r"font-size:12px;color:#6e6359;\">([^<]+)</p>",
+                                  app.extensions["outbox"][-1]["html"]).group(1))
+    n = len(POUR_EMAILS)
+    assert len(set(refs[:n])) == n          # toutes différentes sur un cycle complet
+    assert refs[n] == refs[0]               # puis le cycle recommence
+    # Un autre membre reçoit les paroles dans un autre ordre.
+    other = app.test_client()
+    register(other, "paul@ex.fr", "Paul", "Lyon")
+    with app.test_request_context():
+        others = []
+        for i in range(5):
+            notify(2, f"N{i}", f"/autre/{i}")
+            others.append(re.search(r"font-size:12px;color:#6e6359;\">([^<]+)</p>",
+                                    app.extensions["outbox"][-1]["html"]).group(1))
+    assert others != refs[:5]

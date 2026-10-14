@@ -7,7 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from .db import get_db
 from .geo import coords_or_none
-from .notifications import rendre_email, send_email
+from .notifications import prochain_verset, rendre_email, send_email
 from .photos import COVER_SQL
 from .security import login_required, trop_de_demandes
 
@@ -142,7 +142,7 @@ def mot_de_passe_oublie():
                            bouton_texte="Choisir un nouveau mot de passe", bouton_url=link,
                            notes=[f"Ce lien est valable {minutes} minutes et ne sert qu'une fois.",
                                   ignorer],
-                           verset=None))
+                           verset=prochain_verset(user["id"])))
         # Même réponse que le compte existe ou non, pour ne pas révéler qui est inscrit.
         flash("Si un compte existe avec cette adresse, un e-mail vient de lui être envoyé avec un "
               "lien pour choisir un nouveau mot de passe.")

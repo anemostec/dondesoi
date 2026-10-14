@@ -4,6 +4,7 @@ Traduction Louis Segond (1910), domaine public. Chaque passage est placé là
 où il éclaire le geste demandé au membre. Pour en ajouter un, l'inscrire ici
 puis l'appeler dans un gabarit avec {{ verset("cle") }}.
 """
+import random
 from datetime import date
 
 PASSAGES = {
@@ -93,6 +94,30 @@ PASSAGES = {
     "talents": ("C'est bien, bon et fidèle serviteur ; tu as été fidèle en peu de chose, je te "
                 "confierai beaucoup.", "Mt 25,21"),
 
+    # Autres paroles sur le don, pour varier celles des e-mails.
+    "misericordieux": ("Heureux les miséricordieux, car ils obtiendront miséricorde !", "Mt 5,7"),
+    "pauvres_en_esprit": ("Heureux les pauvres en esprit, car le royaume des cieux est à eux !",
+                          "Mt 5,3"),
+    "tresor": ("Car là où est ton trésor, là aussi sera ton cœur.", "Mt 6,21"),
+    "bonne_mesure": ("Donnez, et il vous sera donné : on versera dans votre sein une bonne mesure, "
+                     "serrée, secouée et qui déborde.", "Lc 6,38"),
+    "prochain": ("Tu aimeras ton prochain comme toi-même.", "Mt 22,39"),
+    "regle_d_or": ("Ce que vous voulez que les hommes fassent pour vous, faites-le de même pour "
+                   "eux.", "Lc 6,31"),
+    "mon_commandement": ("C'est ici mon commandement : Aimez-vous les uns les autres, comme je vous "
+                         "ai aimés.", "Jn 15,12"),
+    "verre_d_eau": ("Quiconque donnera seulement un verre d'eau froide à l'un de ces petits parce "
+                    "qu'il est mon disciple, je vous le dis en vérité, il ne perdra point sa "
+                    "récompense.", "Mt 10,42"),
+    "grain_de_ble": ("Si le grain de blé qui est tombé en terre ne meurt, il reste seul ; mais, "
+                     "s'il meurt, il porte beaucoup de fruit.", "Jn 12,24"),
+    "donnez_leur": ("Donnez-leur vous-mêmes à manger.", "Lc 9,13"),
+    "pere_sait": ("Votre Père sait de quoi vous avez besoin, avant que vous le lui demandiez.",
+                  "Mt 6,8"),
+    "serviteur_de_tous": ("Si quelqu'un veut être le premier, il sera le dernier de tous et le "
+                          "serviteur de tous.", "Mc 9,35"),
+    "aumones": ("Vendez ce que vous possédez, et donnez-le en aumônes.", "Lc 12,33"),
+
     # Inviter : non pas convaincre, mais proposer de venir voir.
     "viens_et_vois": ("Nathanaël lui dit : Peut-il venir de Nazareth quelque chose de bon ? Philippe "
                       "lui répondit : Viens, et vois.", "Jn 1,46"),
@@ -108,6 +133,29 @@ PAROLES_DU_JOUR = [
     "main_gauche", "demandez", "plus_petits", "fais_de_meme", "deux_ou_trois", "lumiere",
     "septante_fois_sept", "laver_les_pieds", "servir", "festin", "venez_a_moi", "cinq_pains",
 ]
+
+
+# Paroles envoyées à tour de rôle dans les e-mails (une différente à chaque e-mail).
+POUR_EMAILS = [
+    "gratuitement", "servir", "plus_grand_amour", "plus_heureux", "commandement", "famille",
+    "temoignage_silencieux", "veuve", "cinq_pains", "deux_tuniques", "laver_les_pieds",
+    "sans_rien_esperer", "festin", "main_gauche", "donne_a_qui_demande", "demandez",
+    "venez_a_moi", "jai_eu_faim", "plus_petits", "samaritain", "fais_de_meme", "deux_ou_trois",
+    "accord_priere", "lepreux", "lumiere", "septante_fois_sept", "zachee", "talents",
+    "misericordieux", "pauvres_en_esprit", "tresor", "bonne_mesure", "prochain", "regle_d_or",
+    "mon_commandement", "verre_d_eau", "grain_de_ble", "donnez_leur", "pere_sait",
+    "serviteur_de_tous", "aumones",
+]
+
+
+def cle_pour_email(user_id, rang):
+    """La rang-ième parole d'un membre : chacun parcourt toute la liste, dans un ordre mélangé
+    qui lui est propre, avant de revoir une parole déjà reçue."""
+    if user_id is None:
+        return random.choice(POUR_EMAILS)
+    ordre = list(POUR_EMAILS)
+    random.Random(f"dondesoi-{user_id}").shuffle(ordre)
+    return ordre[rang % len(ordre)]
 
 
 def passage(key):
