@@ -209,3 +209,11 @@ input[type=file] { font: inherit; max-width: 100%; }
 @media (max-width: 620px) {
   .photo-buttons .photo-btn { flex: 1 1 100%; justify-content: center; padding: .8rem 1rem; }
 }
+
+/* Afficher / masquer le mot de passe */
+.password-wrap { position: relative; }
+.password-wrap input { padding-right: 6.2rem; }
+.password-toggle { position: absolute; top: 50%; right: .4rem; transform: translateY(-50%);
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: .25rem .6rem; font: inherit; font-size: .85rem; cursor: pointer; }
+.password-toggle:hover { border-color: var(--accent); color: var(--accent); }
