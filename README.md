@@ -83,6 +83,21 @@ met à jour le code sans toucher aux données (`/opt/dondesoi/app/instance`). La
 (clé secrète, SMTP, contact) est dans `/etc/dondesoi.env` ; après modification :
 `sudo systemctl restart dondesoi`.
 
+### Hébergement de test : alwaysdata (offre gratuite)
+
+Le site de test tourne sur https://dondesoi.alwaysdata.net (offre gratuite : 1 Go de disque,
+256 Mo de mémoire, donc sans le modèle de sens). Code dans `~/dondesoi/app`, environnement
+Python dans `~/dondesoi/venv` (Flask, Pillow, gunicorn, sans fastembed). Site déclaré dans
+l'interface alwaysdata en « Python WSGI » (`wsgi.py`), variables d'environnement
+`DONDESOI_SECRET_KEY`, `DONDESOI_BEHIND_PROXY=true`, `DONDESOI_SEMANTIC_MODEL=` (vide).
+Mise à jour :
+
+```bash
+ssh dondesoi@ssh-dondesoi.alwaysdata.net 'cd ~/dondesoi/app && git pull -q && DONDESOI_SEMANTIC_MODEL= ../venv/bin/flask --app dondesoi localiser'
+```
+
+puis redémarrer le site dans l'interface (Web → Sites → redémarrer).
+
 ## Organisation du code
 
 ```
