@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS trajet_demandes;
 DROP TABLE IF EXISTS codes_postaux;
 DROP TABLE IF EXISTS invitations_refusees;
 DROP TABLE IF EXISTS invitations;
@@ -80,6 +81,8 @@ CREATE TABLE trajets (
     jours TEXT NOT NULL DEFAULT '',
     heure TEXT NOT NULL DEFAULT '',
     date_fin TEXT,
+    -- Visible dans les annonces (anonyme, sans l'heure), au choix du voyageur.
+    public INTEGER NOT NULL DEFAULT 0,
     note TEXT NOT NULL DEFAULT '',
     from_lat REAL,
     from_lon REAL,
@@ -224,9 +227,24 @@ CREATE TABLE codes_postaux (
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- « Ce trajet m'intéresse » : demande d'un membre au voyageur d'un trajet public.
+-- Le voyageur reste anonyme ; il choisit ce qu'il partage dans sa réponse.
+CREATE TABLE trajet_demandes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    trajet_id INTEGER NOT NULL REFERENCES trajets(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    date TEXT NOT NULL,
+    message TEXT NOT NULL DEFAULT '',
+    statut TEXT NOT NULL DEFAULT 'en_attente' CHECK (statut IN ('en_attente', 'acceptee', 'refusee')),
+    reponse TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    reponse_at TEXT,
+    UNIQUE (trajet_id, user_id, date)
+);
+
 CREATE INDEX idx_messages_don ON messages (don_id);
 CREATE INDEX idx_notifications_user ON notifications (user_id, read_at);
 CREATE INDEX idx_annonces_open ON annonces (kind, status);
 CREATE INDEX idx_trajets_date ON trajets (date);
 
-PRAGMA user_version = 8;
+PRAGMA user_version = 9;

@@ -91,6 +91,8 @@ def liste():
     kind = request.args.get("type", "")
     category = request.args.get("categorie", "")
     q = request.args.get("q", "").strip()
+    if kind == "trajet":
+        return redirect(url_for("trajets.recherche"))
 
     sql = [f"SELECT a.*, u.display_name, {COVER_SQL}, "
            "(SELECT COUNT(*) FROM prieres p WHERE p.annonce_id = a.id) AS nb_prieres "
@@ -122,9 +124,15 @@ def liste():
         if rayon and localise and (a["distance"] is None or a["distance"] > rayon):
             continue
         annonces.append(a)
+    # Trajets publics qui passent près de chez le membre (visibles des membres seulement).
+    trajets = []
+    if g.user is not None and not kind and not category and not q:
+        from .matching import rechercher_trajets
+        u = g.user
+        trajets = rechercher_trajets(get_db(), u["id"], (u["city"], u["lat"], u["lon"]), limite=3)
     return render_template("annonces/liste.html", annonces=annonces, kind=kind,
                            category=category, q=q, rayon=rayon, rayons=RAYONS,
-                           localise=localise)
+                           localise=localise, trajets=trajets)
 
 
 @bp.route("/nouvelle", methods=("GET", "POST"))

@@ -911,3 +911,75 @@ def test_ville_annonce_et_trajet(app):
         "to_city": "Grenoble", "to_cp": "", "frequence": "ponctuel", "date": "2099-01-01"},
         follow_redirects=True).get_data(as_text=True)
     assert "code postal à 5 chiffres" in page
+
+
+# --- Trajets dans les annonces et recherche -------------------------------------------
+
+def ajouter_trajet(client, depart, arrivee, public=True, **extra):
+    data = {"_csrf": csrf(client, "/trajets/"), "from_city": depart,
+            "from_cp": CODES_POSTAUX[depart.lower()], "to_city": arrivee,
+            "to_cp": CODES_POSTAUX[arrivee.lower()], "frequence": "regulier",
+            "jours": ["0", "3"], "heure": "07:30", **extra}
+    if public:
+        data["public"] = "1"
+    return client.post("/trajets/", data=data)
+
+
+def test_recherche_de_trajets(app):
+    paul, anne, visiteur = app.test_client(), app.test_client(), app.test_client()
+    register(paul, "paul@ex.fr", "Paul", "Villeurbanne")   # 1
+    register(anne, "anne@ex.fr", "Anne", "Lyon")           # 2
+    ajouter_trajet(paul, "Villeurbanne", "Marseille")             # public
+    ajouter_trajet(paul, "Villeurbanne", "Paris", public=False)   # privé
+
+    # Recherche le long de la route : Lyon → Valence est sur Villeurbanne → Marseille.
+    url = "/trajets/recherche?from_cp=69001&from_city=Lyon&to_cp=26000&to_city=Valence"
+    page = anne.get(url).get_data(as_text=True)
+    assert "Un membre fait Villeurbanne → Marseille" in page
+    assert "Paul" not in page and "7 h 30" not in page and "07:30" not in page   # anonyme, sans l'heure
+    assert "→ Paris" not in anne.get("/trajets/recherche?to_cp=75001&to_city=Paris").get_data(as_text=True)
+    # Mauvais sens : Valence → Lyon ne correspond pas.
+    sens_inverse = "/trajets/recherche?from_cp=26000&from_city=Valence&to_cp=69001&to_city=Lyon"
+    assert "Villeurbanne → Marseille" not in anne.get(sens_inverse).get_data(as_text=True)
+    # Filtre par date : un mardi ne correspond pas à un trajet du lundi et du jeudi.
+    from datetime import date, timedelta
+    mardi = date.today() + timedelta(days=(1 - date.today().weekday()) % 7 or 7)
+    assert "Marseille" not in anne.get(f"/trajets/recherche?date={mardi}").get_data(as_text=True)
+    # Encart dans les annonces, et réservé aux membres.
+    assert "Trajets qui passent près de chez vous" in anne.get("/annonces/").get_data(as_text=True)
+    assert visiteur.get("/trajets/recherche").status_code == 302
+    assert "Marseille" not in visiteur.get("/annonces/").get_data(as_text=True)
+
+    # Demande, puis réponse du voyageur.
+    with app.app_context():
+        trajet_id = get_db().execute("SELECT id FROM trajets WHERE to_city = 'Marseille'").fetchone()[0]
+    jour = re.search(r'<option value="(\d{4}-\d\d-\d\d)">', anne.get(url).get_data(as_text=True)).group(1)
+    anne.post(f"/trajets/{trajet_id}/demande", data={"_csrf": csrf(anne, url), "date": jour,
+                                                     "message": "Un carton de livres pour Valence"})
+    assert any("Anne aimerait faire porter" in b for b in unread(app, 1))
+    page = paul.get("/trajets/").get_data(as_text=True)
+    assert "Un carton de livres pour Valence" in page
+    with app.app_context():
+        demande_id = get_db().execute("SELECT id FROM trajet_demandes").fetchone()[0]
+    paul.post(f"/trajets/demandes/{demande_id}/reponse", data={
+        "_csrf": csrf(paul, "/trajets/"), "statut": "acceptee", "reponse": "Paul, 06 00 00 00 00"})
+    assert any("Le voyageur accepte" in b for b in unread(app, 2))
+    page = anne.get("/trajets/").get_data(as_text=True)
+    assert "le voyageur accepte" in page and "Paul, 06 00 00 00 00" in page
+    # Seul le voyageur peut répondre.
+    assert anne.post(f"/trajets/demandes/{demande_id}/reponse", data={
+        "_csrf": csrf(anne, "/trajets/"), "statut": "refusee"}).status_code == 403
+
+
+def test_visibilite_trajet(app):
+    paul, anne = app.test_client(), app.test_client()
+    register(paul, "paul@ex.fr", "Paul", "Villeurbanne")
+    register(anne, "anne@ex.fr", "Anne", "Lyon")
+    ajouter_trajet(paul, "Villeurbanne", "Grenoble", public=False)
+    with app.app_context():
+        trajet_id = get_db().execute("SELECT id FROM trajets").fetchone()[0]
+    assert "Grenoble" not in anne.get("/trajets/recherche").get_data(as_text=True)
+    paul.post(f"/trajets/{trajet_id}/visibilite", data={"_csrf": csrf(paul, "/trajets/")})
+    assert "Villeurbanne → Grenoble" in anne.get("/trajets/recherche").get_data(as_text=True)
+    assert anne.post(f"/trajets/{trajet_id}/visibilite",
+                     data={"_csrf": csrf(anne, "/trajets/")}).status_code == 403

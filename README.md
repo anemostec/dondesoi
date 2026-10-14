@@ -27,6 +27,7 @@ L'esprit du projet est décrit dans `../don_de_soi.tex` et sur la page « Charte
 | Les œuvres de miséricorde (Mt 25,35-36) | Catégorie « Visite » (personne seule, malade, détenue) ajoutée aux besoins prioritaires |
 | Dignité de celui qui demande | Le nom de l'auteur d'un besoin n'est visible que des membres |
 | L'Évangile au cœur du site | Passages placés là où ils éclairent le geste, « Parole du jour » (`evangile.py`, Louis Segond 1910, domaine public) |
+| Trajets visibles et recherche | Au choix du voyageur, un trajet apparaît dans les annonces, anonyme et sans l'heure, pour les membres seulement ; page « Rechercher un trajet » (départ, arrivée, date, détour, le long de la route) et demande « Ce trajet m'intéresse », à laquelle le voyageur répond en choisissant ce qu'il partage |
 | Trajets pour éviter les frais d'expédition | `trajets.py` : trajets ponctuels ou réguliers (jours de la semaine, heure, période, retour), `calendrier.py` ; sont proposés ceux qui passent à moins de 15 km du donateur puis du receveur, dans le bon sens ; pour un trajet régulier, le donateur choisit l'une des prochaines dates |
 | Inviter (« Viens, et vois », Jn 1,46) | Lien personnel à partager ou invitation par e-mail (`invitations.py`) ; « invité par » visible seulement des deux personnes ; 10 tentatives par jour, une invitation par adresse, refus définitif possible, adresse effacée après 30 jours sans inscription |
 | Avis après le don, droit de réponse, sans blocage | Table `avis` ; visibles sur le profil du receveur ; ils n'empêchent jamais un don |

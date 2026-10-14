@@ -62,9 +62,15 @@ def liste_fr(mots):
     return mots[0] if len(mots) == 1 else ", ".join(mots[:-1]) + " et " + mots[-1]
 
 
-def description(trajet):
-    """Ex. « tous les lundis et jeudis à 7 h 30, jusqu'au ven. 19 déc. » ou « le mar. 21 oct. à 9 h »."""
-    heure = f" à {heure_fr(trajet['heure'])}" if trajet["heure"] else ""
+def a_lieu_le(trajet, jour):
+    """Vrai si le trajet a lieu à cette date (objet date)."""
+    return jour in occurrences(trajet, depuis=jour, nombre=1)
+
+
+def description(trajet, avec_heure=True):
+    """Ex. « tous les lundis et jeudis à 7 h 30, jusqu'au ven. 19 déc. » ou « le mar. 21 oct. à 9 h ».
+    Sans l'heure pour les trajets affichés publiquement (on ne publie pas les habitudes à l'heure près)."""
+    heure = f" à {heure_fr(trajet['heure'])}" if trajet["heure"] and avec_heure else ""
     if not est_regulier(trajet):
         return f"le {date_fr(trajet['date'])}{heure}"
     jours = jours_de(trajet)

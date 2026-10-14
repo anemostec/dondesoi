@@ -15,6 +15,7 @@
       <option value="">Tous</option>
       <option value="don" {{ 'selected' if kind == 'don' }}>Dons proposés</option>
       <option value="besoin" {{ 'selected' if kind == 'besoin' }}>Besoins</option>
+      {% if g.user %}<option value="trajet">Trajets</option>{% endif %}
     </select>
   </div>
   <div>
@@ -37,6 +38,19 @@
   {% endif %}
   <button class="btn">Filtrer</button>
 </form>
+
+{% if trajets %}
+<div class="panel panel-soft">
+  <h2 style="margin-top:0">Trajets qui passent près de chez vous</h2>
+  {% for r in trajets %}{% set t = r.trajet %}
+    <p class="small" style="margin:.3rem 0">Un membre fait <strong>{{ t.from_city }} → {{ t.to_city }}</strong>,
+      {{ r.description }}.</p>
+  {% endfor %}
+  <p class="small" style="margin-bottom:0"><a href="{{ url_for('trajets.recherche', from_cp=g.user.postal_code, from_city=g.user.city) }}">Voir et rechercher les trajets</a></p>
+</div>
+{% elif g.user %}
+<p class="small"><a href="{{ url_for('trajets.recherche') }}">Rechercher un trajet</a> pour faire porter un don.</p>
+{% endif %}
 
 {% if annonces %}
 <div class="grid">

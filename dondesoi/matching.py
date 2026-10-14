@@ -246,3 +246,50 @@ def trajets_pour_don(db, donor, receiver):
                     "prochaines": prochaines})
     out.sort(key=lambda x: x["prochaines"][0])
     return out
+
+
+def rechercher_trajets(db, user_id, depart=None, arrivee=None, jour=None, detour_km=DETOUR_KM,
+                       limite=50):
+    """Trajets publics des autres membres, pour la recherche et les annonces.
+
+    depart / arrivee : None ou (nom, lat, lon) ; un trajet convient s'il passe à moins de
+    detour_km du départ, puis de l'arrivée (dans cet ordre). jour : None ou une date où le
+    trajet doit avoir lieu. Retourne des dicts triés par prochaine date.
+    """
+    from .calendrier import a_lieu_le
+    aujourd_hui = date.today().isoformat()
+    rows = db.execute(
+        f"SELECT t.* FROM trajets t WHERE t.public = 1 AND t.user_id != ? AND {SQL_A_VENIR}",
+        (user_id, aujourd_hui, aujourd_hui),
+    ).fetchall()
+
+    def proche(lieu, t):
+        """(position le long du trajet, écart en km) ou None si trop loin."""
+        nom, lat, lon = lieu
+        if None in (lat, lon, t["from_lat"], t["to_lat"]):
+            # Coordonnées inconnues : on compare les noms des villes de départ et d'arrivée.
+            villes = [normalize_city(t["from_city"]), normalize_city(t["to_city"])]
+            n = normalize_city(nom)
+            return (villes.index(n), 0.0) if n in villes else None
+        pos, ecart = position_sur_trajet(lat, lon, t)
+        return (pos, ecart) if ecart <= detour_km else None
+
+    out = []
+    for t in rows:
+        prochaines = occurrences(t, nombre=6)
+        if not prochaines or (jour is not None and not a_lieu_le(t, jour)):
+            continue
+        p_dep = proche(depart, t) if depart else (0.0, None)
+        p_arr = proche(arrivee, t) if arrivee else (1.0, None)
+        if p_dep is None or p_arr is None or (depart and arrivee and p_dep[0] >= p_arr[0]):
+            continue
+        raisons = []
+        if depart and p_dep[1] is not None:
+            raisons.append(f"passe à {km(p_dep[1])} de {depart[0]}")
+        if arrivee and p_arr[1] is not None:
+            raisons.append(f"puis à {km(p_arr[1])} de {arrivee[0]}" if raisons
+                           else f"passe à {km(p_arr[1])} de {arrivee[0]}")
+        out.append({"trajet": t, "description": description(t, avec_heure=False),
+                    "prochaines": [jour] if jour else prochaines, "raisons": raisons})
+    out.sort(key=lambda x: (x["prochaines"][0], x["trajet"]["id"]))
+    return out[:limite]

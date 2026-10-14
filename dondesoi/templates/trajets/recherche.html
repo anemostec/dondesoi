@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_ville.html" import champ_ville %}
+{% block title %}Rechercher un trajet{% endblock %}
+{% block content %}
+<h1>Rechercher un trajet</h1>
+{{ verset('samaritain') }}
+<p class="muted">Des membres acceptent de porter un objet lors de leurs déplacements. Indiquez d'où
+  et vers où, et éventuellement la date. Les voyageurs restent anonymes et les heures ne sont pas
+  affichées : vous leur écrivez, ils vous répondent s'ils le peuvent.</p>
+
+<form class="panel stack recherche-trajet" method="get">
+  <div class="row">
+    {{ champ_ville('from_cp', 'from_city', form.from_cp, form.from_city, titre='Départ', requis=False) }}
+    {{ champ_ville('to_cp', 'to_city', form.to_cp, form.to_city, titre='Arrivée', requis=False) }}
+  </div>
+  <div class="row">
+    <div><label for="date">Date <span class="hint">(facultatif)</span></label>
+      <input type="date" id="date" name="date" min="{{ today }}" value="{{ form.date or '' }}"></div>
+    <div><label for="detour">Détour accepté</label>
+      <select id="detour" name="detour">
+        {% for d in (5, 15, 30, 50) %}<option value="{{ d }}" {{ 'selected' if d == detour }}>{{ d }} km autour de la route</option>{% endfor %}
+      </select></div>
+  </div>
+  <div class="actions" style="margin:0">
+    <button class="btn">Rechercher</button>
+    <a class="btn btn-ghost" href="{{ url_for('trajets.mes_trajets') }}">Proposer mes trajets</a>
+  </div>
+</form>
+
+{% if resultats %}
+<h2>{{ resultats|length }} trajet{{ 's' if resultats|length > 1 }}</h2>
+<ul class="list panel">
+  {% for r in resultats %}{% set t = r.trajet %}
+  <li>
+    <strong>Un membre fait {{ t.from_city }} → {{ t.to_city }}</strong>
+    {% if t.jours %}<span class="tag tag-don">Régulier</span>{% endif %}
+    <div class="small">{{ r.description }}</div>
+    {% if r.raisons %}<div class="small muted">{{ r.raisons|join(' ') }}</div>{% endif %}
+    {% if t.note %}<div class="small muted">{{ t.note }}</div>{% endif %}
+    <details class="demande-trajet">
+      <summary class="btn btn-small btn-olive">Ce trajet m'intéresse</summary>
+      <form class="stack" method="post" action="{{ url_for('trajets.demande', trajet_id=t.id) }}" style="margin-top:.6rem">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div><label for="date-{{ t.id }}">Quel jour ?</label>
+          <select id="date-{{ t.id }}" name="date">
+            {% for d in r.prochaines %}<option value="{{ d.isoformat() }}">{{ d|date_fr }}</option>{% endfor %}
+          </select></div>
+        <div><label for="msg-{{ t.id }}">Votre message</label>
+          <textarea id="msg-{{ t.id }}" name="message" required maxlength="1000" style="min-height:4rem"
+                    placeholder="Ex. : un carton de livres à déposer à Valence, chez une famille qui en a besoin."></textarea></div>
+        <p class="hint">Le voyageur verra votre prénom, votre ville et ce message.</p>
+        <div><button class="btn btn-small">Envoyer la demande</button></div>
+      </form>
+    </details>
+  </li>
+  {% endfor %}
+</ul>
+{% elif cherche %}
+<p class="muted">Aucun trajet ne correspond pour l'instant. Essayez un détour plus large ou sans date.</p>
+{% endif %}
+{% endblock %}

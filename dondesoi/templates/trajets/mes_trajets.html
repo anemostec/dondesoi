@@ -3,6 +3,7 @@
 {% from "_ville.html" import champ_ville %}
 {% block content %}
 <h1>Mes trajets</h1>
+<p><a class="btn btn-small btn-ghost" href="{{ url_for('trajets.recherche') }}">Rechercher un trajet</a></p>
 {{ verset('samaritain') }}
 <p class="muted">Indiquez vos déplacements prévus, ponctuels ou réguliers (le trajet du travail,
   la messe du dimanche…) : un don pourra voyager avec vous et éviter des frais d'expédition. Les
@@ -21,15 +22,63 @@
         <div class="small muted">Prochains : {% for d in item.prochaines %}{{ d|date_fr }}{{ ', ' if not loop.last }}{% endfor %}</div>
       {% endif %}
       {% if t.note %}<div class="small muted">{{ t.note }}</div>{% endif %}
-      <form method="post" action="{{ url_for('trajets.supprimer', trajet_id=t.id) }}" style="margin-top:.3rem">
-        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-        <button class="linklike small">Supprimer</button>
-      </form>
+      <div class="small">
+        {% if t.public %}<span class="tag">Visible dans les annonces, sans votre nom ni l'heure</span>{% endif %}
+      </div>
+      <div class="actions" style="margin:.3rem 0 0">
+        <form method="post" action="{{ url_for('trajets.visibilite', trajet_id=t.id) }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="linklike small">{{ "Retirer des annonces" if t.public else "Afficher dans les annonces" }}</button>
+        </form>
+        <form method="post" action="{{ url_for('trajets.supprimer', trajet_id=t.id) }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="linklike small">Supprimer</button>
+        </form>
+      </div>
+      {% for d in item.demandes %}
+      <div class="panel panel-soft demande-recue">
+        <p class="small" style="margin-top:0"><strong>{{ d.display_name }}</strong> ({{ d.city }}) aimerait faire
+          porter quelque chose le <strong>{{ d.date|date_fr }}</strong>.</p>
+        {% if d.message %}<p class="small" style="white-space:pre-line">« {{ d.message }} »</p>{% endif %}
+        {% if d.statut == 'en_attente' %}
+        <form class="stack" method="post" action="{{ url_for('trajets.repondre', demande_id=d.id) }}">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <label for="rep-{{ d.id }}" class="hint">Votre réponse : c'est tout ce que {{ d.display_name }} saura
+            de vous (un prénom, un moyen de contact, un lieu de rendez-vous…)</label>
+          <textarea id="rep-{{ d.id }}" name="reponse" style="min-height:3.5rem"></textarea>
+          <div class="actions" style="margin:0">
+            <button class="btn btn-small" name="statut" value="acceptee">J'accepte</button>
+            <button class="btn btn-small btn-ghost" name="statut" value="refusee">Je ne peux pas</button>
+          </div>
+        </form>
+        {% else %}
+        <p class="small muted" style="margin-bottom:0">Vous avez {{ 'accepté' if d.statut == 'acceptee' else 'décliné' }}.
+          {% if d.reponse %}Votre réponse : « {{ d.reponse }} »{% endif %}</p>
+        {% endif %}
+      </div>
+      {% endfor %}
     </li>
     {% endfor %}
   </ul>
   {% else %}
   <p class="muted">Aucun trajet prévu.</p>
+  {% endif %}
+
+  <h2 id="mes-demandes">Mes demandes de transport</h2>
+  {% if mes_demandes %}
+  <ul class="list panel">
+    {% for d in mes_demandes %}
+    <li class="small">
+      <strong>{{ d.from_city }} → {{ d.to_city }}</strong>, le {{ d.date|date_fr }} :
+      {% if d.statut == 'en_attente' %}<span class="muted">en attente de réponse.</span>
+      {% elif d.statut == 'acceptee' %}<strong>le voyageur accepte !</strong>
+      {% else %}<span class="muted">le voyageur ne peut pas.</span>{% endif %}
+      {% if d.reponse %}<div style="white-space:pre-line">Le voyageur : « {{ d.reponse }} »</div>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted small">Aucune demande. <a href="{{ url_for('trajets.recherche') }}">Rechercher un trajet</a></p>
   {% endif %}
 </div>
 
@@ -72,6 +121,9 @@
 
     <div><label for="note">Précisions <span class="hint">(place disponible…)</span></label>
       <input type="text" id="note" name="note" value="{{ form.note or '' }}"></div>
+    <label class="check"><input type="checkbox" name="public" value="1" {{ 'checked' if form.public }}>
+      <span>Afficher ce trajet dans les annonces <span class="hint">(anonyme, sans l'heure, visible
+        des membres seulement : ils pourront vous demander de porter quelque chose)</span></span></label>
     <div><button class="btn btn-small">Ajouter</button></div>
   </form>
 </aside>

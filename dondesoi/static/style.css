@@ -225,3 +225,10 @@ input[type=time] { width: 100%; padding: .55rem .7rem; font: inherit; color: var
 .cp-ville-champs { display: grid; grid-template-columns: 8rem 1fr; gap: .7rem; }
 .cp-ville .hint:empty { display: none; }
 .cp-ville input:invalid:not(:placeholder-shown):not(:focus) { border-color: var(--danger); }
+
+/* Recherche de trajets */
+.recherche-trajet .row { align-items: start; }
+details.demande-trajet { margin-top: .5rem; }
+details.demande-trajet > summary { list-style: none; display: inline-block; }
+details.demande-trajet > summary::-webkit-details-marker { display: none; }
+.demande-recue { margin: .6rem 0 0; padding: .7rem .9rem; }
