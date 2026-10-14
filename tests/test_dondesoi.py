@@ -638,9 +638,10 @@ def test_envoi_par_sendmail(app, tmp_path):
                       MAIL_REPLY_TO="contact@exemple.org")
     with app.test_request_context():
         from dondesoi.notifications import send_email
-        send_email("anne@ex.fr", "Bonjour", "Un message accentué : prière.")
+        send_email("anne@ex.fr", "Bonjour", "Un message accentué : prière.", "<p>Bonjour</p>")
     mail = capture.read_text()
     assert "To: anne@ex.fr" in mail and "Reply-To: contact@exemple.org" in mail
+    assert "multipart/alternative" in mail and "text/html" in mail and "text/plain" in mail
     assert "ne-pas-repondre@exemple.org" in mail
 
 
@@ -729,3 +730,26 @@ def test_invitations_effacees_apres_30_jours(app):
     philippe.get("/inviter")
     with app.app_context():
         assert get_db().execute("SELECT COUNT(*) FROM invitations WHERE email = 'y@ex.fr'").fetchone()[0] == 0
+
+
+
+def test_emails_html(app):
+    philippe = app.test_client()
+    register(philippe, "philippe@ex.fr", "Philippe", "Lyon")
+    philippe.post("/inviter", data={"_csrf": csrf(philippe, "/inviter"), "email": "n@ex.fr",
+                                    "message": "<script>alert(1)</script> Viens !"})
+    mail = app.extensions["outbox"][-1]
+    html = mail["html"]
+    assert "#a4472d" in html and "Don de soi" in html                     # charte du site
+    assert "Découvrir Don de soi" in html and "/rejoindre/" in html      # bouton
+    assert "Jn 1,46" in html and "Ne plus jamais recevoir" in html
+    assert "<script>" not in html and "&lt;script&gt;" in html             # texte des membres échappé
+    assert "/static/email/croix.png" in html
+
+    # Notification et mot de passe oublié ont aussi leur version HTML.
+    with app.test_request_context():
+        from dondesoi.notifications import notify
+        notify(1, "Un membre prie pour vous.", "/annonces/1")
+    assert "Voir sur Don de soi" in app.extensions["outbox"][-1]["html"]
+    philippe.post("/mot-de-passe-oublie", data={"_csrf": csrf(philippe), "email": "philippe@ex.fr"})
+    assert "Choisir un nouveau mot de passe" in app.extensions["outbox"][-1]["html"]

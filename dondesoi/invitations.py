@@ -19,7 +19,7 @@ from flask import (Blueprint, abort, flash, g, redirect, render_template, reques
                    session, url_for)
 
 from .db import get_db
-from .notifications import notify, send_email
+from .notifications import notify, rendre_email, send_email
 from .security import login_required, trop_de_demandes
 
 bp = Blueprint("invitations", __name__)
@@ -137,6 +137,20 @@ def envoyer_invitation(email, token, message):
     lien = url_for("invitations.rejoindre", token=token, _external=True)
     refus = url_for("invitations.refuser", token=token, _external=True)
     mot = f"\n{nom} vous écrit :\n« {message} »\n" if message else ""
+    html = rendre_email(
+        titre=f"{nom} vous invite à rejoindre Don de soi",
+        apercu=f"{nom} vous invite : viens, et vois.",
+        paragraphes=["Bonjour,",
+                     f"{nom} vous invite à rejoindre Don de soi, une famille où l'on donne et "
+                     "reçoit gratuitement : objets, services, temps, écoute, prière. Sans argent "
+                     "entre membres, sans publicité."],
+        citation=message or None, citation_auteur=nom,
+        bouton_texte="Découvrir Don de soi", bouton_url=lien,
+        notes=["Si vous ne souhaitez pas donner suite, ignorez simplement ce message : votre "
+               f"adresse sera effacée dans {CONSERVATION_JOURS} jours."],
+        verset="viens_et_vois",
+        pied=[{"texte": "Ne plus jamais recevoir d'invitation de Don de soi", "url": refus}],
+    )
     send_email(
         email, f"{nom} vous invite à rejoindre Don de soi",
         f"Bonjour,\n\n{nom} vous invite à rejoindre Don de soi, une famille où l'on donne et "
@@ -148,6 +162,7 @@ def envoyer_invitation(email, token, message):
         "Si vous ne souhaitez pas donner suite, ignorez simplement ce message : votre adresse "
         f"sera effacée dans {CONSERVATION_JOURS} jours. Pour ne plus jamais recevoir "
         f"d'invitation de Don de soi :\n{refus}\n\nDon de soi\n",
+        html,
     )
 
 

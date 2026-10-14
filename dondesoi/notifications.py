@@ -7,6 +7,9 @@ Envoi des e-mails selon MAIL_BACKEND :
 - "console" : écrits dans le journal du serveur (par défaut, pour développer) ;
 - "memory"  : gardés dans app.extensions["outbox"] (pour les tests).
 
+Chaque e-mail part en deux versions : texte brut, et HTML aux couleurs du site
+(gabarit templates/email/message.html, composé par rendre_email).
+
 Les textes ne révèlent jamais l'identité d'un donateur.
 """
 import smtplib
@@ -39,31 +42,51 @@ def notify(user_id, body, link):
     user = db.execute("SELECT email, display_name, email_notifications FROM users WHERE id = ?",
                       (user_id,)).fetchone()
     if user is not None and user["email_notifications"]:
-        send_email(user["email"], "Don de soi : " + body, _email_text(user, body, link))
+        url = request.host_url.rstrip("/") + link
+        text = (f"Bonjour {user['display_name']},\n\n{body}\n\n{url}\n\n"
+                "Que la paix soit avec vous,\nDon de soi\n\n"
+                "Pour ne plus recevoir ces e-mails : décochez l'option dans « Mon profil ».\n")
+        html = rendre_email(
+            titre=body, apercu=body,
+            paragraphes=[f"Bonjour {user['display_name']},"],
+            bouton_texte="Voir sur Don de soi", bouton_url=url,
+            pied=[{"texte": "Ne plus recevoir ces e-mails (Mon profil)",
+                   "url": url_for("auth.profil", _external=True)}],
+        )
+        send_email(user["email"], "Don de soi : " + body, text, html)
 
 
-def _email_text(user, body, link):
-    url = request.host_url.rstrip("/") + link
-    return (f"Bonjour {user['display_name']},\n\n{body}\n\n{url}\n\n"
-            "Que la paix soit avec vous,\nDon de soi\n\n"
-            "Pour ne plus recevoir ces e-mails : décochez l'option dans « Mon profil ».\n")
+def rendre_email(titre, paragraphes=(), bouton_texte=None, bouton_url=None, citation=None,
+                 citation_auteur=None, notes=(), verset="gratuitement", apercu=None, pied=()):
+    """Version HTML d'un e-mail, aux couleurs du site (à appeler pendant une requête)."""
+    from .evangile import passage
+    return render_template(
+        "email/message.html", titre=titre, paragraphes=paragraphes, bouton_texte=bouton_texte,
+        bouton_url=bouton_url, citation=citation, citation_auteur=citation_auteur, notes=notes,
+        verset=passage(verset) if verset else None, apercu=apercu, pied=pied,
+        site_url=url_for("main.accueil", _external=True),
+        logo_url=url_for("static", filename="email/croix.png", _external=True),
+    )
 
 
-def send_email(to, subject, text):
+def send_email(to, subject, text, html=None):
     app = current_app
     backend = app.config.get("MAIL_BACKEND", "console")
     if backend == "memory":
-        app.extensions.setdefault("outbox", []).append({"to": to, "subject": subject, "text": text})
+        app.extensions.setdefault("outbox", []).append({"to": to, "subject": subject, "text": text,
+                                                        "html": html})
         return
     if backend not in ("smtp", "sendmail"):
-        print(f"--- E-mail (non envoyé, MAIL_BACKEND=console) à {to} : {subject}\n{text}---",
-              file=sys.stderr)
+        print(f"--- E-mail (non envoyé, MAIL_BACKEND=console) à {to} : {subject}\n{text}"
+              f"{'(+ version HTML)' if html else ''}---", file=sys.stderr)
         return
     msg = EmailMessage()
     msg["From"] = app.config["MAIL_FROM"]
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(text)
+    if html:
+        msg.add_alternative(html, subtype="html")
     if app.config.get("MAIL_REPLY_TO"):
         msg["Reply-To"] = app.config["MAIL_REPLY_TO"]
     if backend == "sendmail":
@@ -86,10 +109,11 @@ def send_email(to, subject, text):
 
 
 def unread_count():
-    if g.user is None:
+    user = g.get("user")   # absent hors d'une page (ex. e-mail composé en tâche de fond)
+    if user is None:
         return 0
     return get_db().execute(
-        "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL", (g.user["id"],),
+        "SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL", (user["id"],),
     ).fetchone()[0]
 
 

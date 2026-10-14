@@ -7,7 +7,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from .db import get_db
 from .geo import coords_or_none
-from .notifications import send_email
+from .notifications import rendre_email, send_email
 from .photos import COVER_SQL
 from .security import login_required, trop_de_demandes
 
@@ -127,12 +127,22 @@ def mot_de_passe_oublie():
         if user is not None and not limite:
             link = url_for("auth.reinitialiser", token=make_reset_token(user), _external=True)
             minutes = current_app.config["PASSWORD_RESET_MAX_AGE"] // 60
+            ignorer = ("Si vous n'êtes pas à l'origine de cette demande, ignorez simplement ce "
+                       "message : votre mot de passe actuel reste valable.")
             send_email(user["email"], "Don de soi : choisir un nouveau mot de passe",
                        f"Bonjour {user['display_name']},\n\n"
                        f"Pour choisir un nouveau mot de passe, ouvrez ce lien (valable {minutes} minutes,"
-                       f" utilisable une seule fois) :\n\n{link}\n\n"
-                       "Si vous n'êtes pas à l'origine de cette demande, ignorez simplement ce message :"
-                       " votre mot de passe actuel reste valable.\n\nDon de soi\n")
+                       f" utilisable une seule fois) :\n\n{link}\n\n{ignorer}\n\nDon de soi\n",
+                       rendre_email(
+                           titre="Choisir un nouveau mot de passe",
+                           apercu="Le lien pour choisir un nouveau mot de passe",
+                           paragraphes=[f"Bonjour {user['display_name']},",
+                                        "Vous avez demandé à choisir un nouveau mot de passe pour "
+                                        "votre compte Don de soi."],
+                           bouton_texte="Choisir un nouveau mot de passe", bouton_url=link,
+                           notes=[f"Ce lien est valable {minutes} minutes et ne sert qu'une fois.",
+                                  ignorer],
+                           verset=None))
         # Même réponse que le compte existe ou non, pour ne pas révéler qui est inscrit.
         flash("Si un compte existe avec cette adresse, un e-mail vient de lui être envoyé avec un "
               "lien pour choisir un nouveau mot de passe.")
