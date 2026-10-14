@@ -144,6 +144,13 @@ MIGRATIONS = [
     """
     ALTER TABLE users ADD COLUMN versets_envoyes INTEGER NOT NULL DEFAULT 0;
     """,
+    # Trajets réguliers (jours de la semaine, heure) et date de transport choisie.
+    """
+    ALTER TABLE trajets ADD COLUMN jours TEXT NOT NULL DEFAULT '';
+    ALTER TABLE trajets ADD COLUMN heure TEXT NOT NULL DEFAULT '';
+    ALTER TABLE trajets ADD COLUMN date_fin TEXT;
+    ALTER TABLE dons ADD COLUMN transport_date TEXT;
+    """,
 ]
 
 

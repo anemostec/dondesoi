@@ -567,8 +567,8 @@ def test_trajet_sur_le_chemin(app):
         trajet(voyageur, "Villeurbanne", "Marseille")   # passe par Lyon puis Valence
         trajet(voyageur, "Marseille", "Lyon")           # mauvais sens
         found = trajets_pour_don(db, lyon, valence)
-        assert len(found) == 1 and found[0][0]["to_city"] == "Marseille"
-        assert "de chez vous" in found[0][1]
+        assert len(found) == 1 and found[0]["trajet"]["to_city"] == "Marseille"
+        assert "de chez vous" in found[0]["explication"]
         assert trajets_pour_don(db, lyon, paris) == []   # Paris n'est pas sur la route
 
 
@@ -780,3 +780,71 @@ def test_une_parole_differente_par_email(app):
             others.append(re.search(r"font-size:12px;color:#6e6359;\">([^<]+)</p>",
                                     app.extensions["outbox"][-1]["html"]).group(1))
     assert others != refs[:5]
+
+
+
+# --- Trajets réguliers ----------------------------------------------------------------
+
+def test_calendrier_trajet_regulier():
+    from datetime import date
+    from dondesoi.calendrier import description, occurrences
+    t = {"date": "2026-10-01", "jours": "0,3", "heure": "07:30", "date_fin": "2026-10-20"}
+    # Le 13/10/2026 est un mardi : prochains lundis et jeudis jusqu'au 20/10.
+    assert occurrences(t, depuis=date(2026, 10, 13)) == [date(2026, 10, 15), date(2026, 10, 19)]
+    assert description(t).startswith("tous les lundis et jeudis à 7 h 30")
+    semaine = {"date": "2026-10-01", "jours": "0,1,2,3,4", "heure": "", "date_fin": None}
+    assert description(semaine).startswith("du lundi au vendredi")
+    ponctuel = {"date": "2026-10-21", "jours": "", "heure": "09:00", "date_fin": None}
+    assert description(ponctuel) == "le mer. 21 oct. à 9 h"
+
+
+def test_trajet_regulier_avec_retour_et_transport(app):
+    from datetime import date, timedelta
+    donor, receiver, paul = app.test_client(), app.test_client(), app.test_client()
+    register(donor, "donor@ex.fr", "Joseph", "Lyon")          # 1
+    register(receiver, "receiver@ex.fr", "Anne", "Valence")    # 2
+    register(paul, "paul@ex.fr", "Paul", "Villeurbanne")       # 3
+
+    # Paul fait Villeurbanne → Marseille tous les lundis et jeudis à 7 h 30, retour à 18 h.
+    page = paul.post("/trajets/", data={
+        "_csrf": csrf(paul, "/trajets/"), "from_city": "Villeurbanne", "to_city": "Marseille",
+        "frequence": "regulier", "jours": ["0", "3"], "heure": "07:30",
+        "retour": "1", "heure_retour": "18:00"}, follow_redirects=True).get_data(as_text=True)
+    assert "avec son retour" in page and "tous les lundis et jeudis à 7 h 30" in page
+    assert "à 18 h" in page
+    with app.app_context():
+        assert get_db().execute("SELECT COUNT(*) FROM trajets WHERE jours = '0,3'").fetchone()[0] == 2
+
+    # Un don de Lyon vers Valence : le trajet régulier est proposé, avec ses prochaines dates.
+    offre = post_annonce(donor, "don", "objet", "Table", "table en bois")
+    don_url = donor.post("/dons/preparer", data={"_csrf": csrf(donor, "/tableau-de-bord"),
+                         "offre": offre, "receveur": 2, "shared_info": ""}).headers["Location"]
+    page = donor.get(don_url).get_data(as_text=True)
+    assert "Régulier" in page and 'name="transport_date"' in page
+    choix = re.findall(r'<option value="(\d{4}-\d\d-\d\d)">', page)
+    assert choix and all(date.fromisoformat(d).weekday() in (0, 3) for d in choix)
+
+    with app.app_context():
+        trajet_id = get_db().execute("SELECT id FROM trajets WHERE from_city = 'Villeurbanne'").fetchone()[0]
+    # Une date qui n'est pas un jour du trajet est refusée.
+    mardi = date.today() + timedelta(days=(1 - date.today().weekday()) % 7 or 7)
+    bad = donor.post(don_url + "/transport", data={"_csrf": csrf(donor, don_url), "action": "demander",
+                     "trajet_id": trajet_id, "transport_date": mardi.isoformat()})
+    assert bad.status_code == 400
+    donor.post(don_url + "/transport", data={"_csrf": csrf(donor, don_url), "action": "demander",
+               "trajet_id": trajet_id, "transport_date": choix[1]})
+    with app.app_context():
+        assert get_db().execute("SELECT transport_date FROM dons").fetchone()[0] == choix[1]
+    assert any("à 7 h 30" in b for b in unread(app, 3))
+    assert "à 07:30" in paul.get("/tableau-de-bord").get_data(as_text=True)
+
+
+def test_trajet_regulier_termine_disparait(app):
+    paul = app.test_client()
+    register(paul, "paul@ex.fr", "Paul", "Lyon")
+    with app.app_context():
+        db = get_db()
+        db.execute("INSERT INTO trajets (user_id, from_city, to_city, date, jours, date_fin) "
+                   "VALUES (1, 'Lyon', 'Paris', '2020-01-01', '0', '2020-06-01')")
+        db.commit()
+    assert "Paris" not in paul.get("/trajets/").get_data(as_text=True)

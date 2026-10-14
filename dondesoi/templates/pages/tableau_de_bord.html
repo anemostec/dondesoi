@@ -56,7 +56,7 @@
   {% for d in transports %}
   <li>
     <a href="{{ url_for('dons.detail', don_id=d.id) }}"><strong>{{ d.title }}</strong></a>
-    <span class="muted small">· {{ d.from_city }} → {{ d.to_city }}, le {{ d.date }}
+    <span class="muted small">· {{ d.from_city }} → {{ d.to_city }}, le {{ d.date|date_fr }}{% if d.heure %} à {{ d.heure }}{% endif %}
       · {{ 'demande en attente de votre réponse' if d.transport_status == 'demande' else 'accepté' if d.transport_status == 'accepte' else 'refusé' }}</span>
   </li>
   {% endfor %}

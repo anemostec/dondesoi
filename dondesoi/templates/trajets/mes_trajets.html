@@ -3,16 +3,22 @@
 {% block content %}
 <h1>Mes trajets</h1>
 {{ verset('samaritain') }}
-<p class="muted">Indiquez vos déplacements prévus : un don pourra voyager avec vous et éviter des
-  frais d'expédition. Les donateurs vous solliciteront ; vous restez libre d'accepter.</p>
+<p class="muted">Indiquez vos déplacements prévus, ponctuels ou réguliers (le trajet du travail,
+  la messe du dimanche…) : un don pourra voyager avec vous et éviter des frais d'expédition. Les
+  donateurs vous solliciteront pour une date précise ; vous restez libre d'accepter.</p>
 
 <div class="two-col">
 <div>
   {% if trajets %}
   <ul class="list panel">
-    {% for t in trajets %}
+    {% for item in trajets %}{% set t = item.t %}
     <li>
-      <strong>{{ t.from_city }} → {{ t.to_city }}</strong> <span class="muted">· le {{ t.date }}</span>
+      <strong>{{ t.from_city }} → {{ t.to_city }}</strong>
+      {% if t.jours %}<span class="tag tag-don">Régulier</span>{% endif %}
+      <div class="small">{{ item.description }}</div>
+      {% if t.jours and item.prochaines %}
+        <div class="small muted">Prochains : {% for d in item.prochaines %}{{ d|date_fr }}{{ ', ' if not loop.last }}{% endfor %}</div>
+      {% endif %}
       {% if t.note %}<div class="small muted">{{ t.note }}</div>{% endif %}
       <form method="post" action="{{ url_for('trajets.supprimer', trajet_id=t.id) }}" style="margin-top:.3rem">
         <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
@@ -25,20 +31,64 @@
   <p class="muted">Aucun trajet prévu.</p>
   {% endif %}
 </div>
+
 <aside>
-  <form class="stack panel" method="post">
+  <form class="stack panel trajet-form" method="post">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <h3 style="margin-top:0">Ajouter un trajet</h3>
     <div><label for="from_city">Départ</label>
-      <input type="text" id="from_city" name="from_city" value="{{ g.user.city }}" required></div>
+      <input type="text" id="from_city" name="from_city" value="{{ form.from_city or g.user.city }}" required></div>
     <div><label for="to_city">Arrivée</label>
-      <input type="text" id="to_city" name="to_city" required></div>
-    <div><label for="date">Date</label>
-      <input type="date" id="date" name="date" min="{{ today }}" required></div>
+      <input type="text" id="to_city" name="to_city" value="{{ form.to_city or '' }}" required></div>
+
+    <fieldset class="frequence">
+      <legend class="sr-only">Fréquence</legend>
+      <label class="check"><input type="radio" name="frequence" value="ponctuel" {{ 'checked' if form.frequence != 'regulier' }}> Une seule fois</label>
+      <label class="check"><input type="radio" name="frequence" value="regulier" {{ 'checked' if form.frequence == 'regulier' }}> Régulièrement</label>
+    </fieldset>
+
+    <div class="si-regulier">
+      <span class="label-like">Jours</span>
+      <div class="jours">
+        {% for j in jours %}
+        <label class="jour"><input type="checkbox" name="jours" value="{{ loop.index0 }}"
+          {{ 'checked' if loop.index0|string in form.getlist('jours') }}><span>{{ j[:3] }}</span></label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class="row">
+      <div><label for="date"><span class="si-ponctuel">Date</span><span class="si-regulier sep-regulier">À partir du</span></label>
+        <input type="date" id="date" name="date" min="{{ today }}" value="{{ form.date or '' }}"></div>
+      <div><label for="heure">Heure <span class="hint">(facultatif)</span></label>
+        <input type="time" id="heure" name="heure" value="{{ form.heure or '' }}"></div>
+    </div>
+    <div class="si-regulier"><label for="date_fin">Jusqu'au <span class="hint">(facultatif)</span></label>
+      <input type="date" id="date_fin" name="date_fin" min="{{ today }}" value="{{ form.date_fin or '' }}"></div>
+
+    <label class="check"><input type="checkbox" name="retour" value="1" {{ 'checked' if form.retour }}> Je fais aussi le trajet retour</label>
+    <div class="si-retour"><label for="heure_retour">Heure du retour <span class="hint">(facultatif)</span></label>
+      <input type="time" id="heure_retour" name="heure_retour" value="{{ form.heure_retour or '' }}"></div>
+
     <div><label for="note">Précisions <span class="hint">(place disponible…)</span></label>
-      <input type="text" id="note" name="note"></div>
+      <input type="text" id="note" name="note" value="{{ form.note or '' }}"></div>
     <div><button class="btn btn-small">Ajouter</button></div>
   </form>
 </aside>
 </div>
+<script>
+  // Affiche les champs utiles selon « une seule fois » / « régulièrement » et le retour.
+  (function () {
+    var f = document.querySelector(".trajet-form");
+    function maj() {
+      var regulier = f.querySelector('input[name="frequence"][value="regulier"]').checked;
+      f.classList.toggle("est-regulier", regulier);
+      f.classList.toggle("avec-retour", f.querySelector('input[name="retour"]').checked);
+      f.querySelector("#date").required = !regulier;
+    }
+    f.classList.add("js-pret");
+    f.addEventListener("change", maj);
+    maj();
+  })();
+</script>
 {% endblock %}

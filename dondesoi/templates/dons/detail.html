@@ -33,22 +33,32 @@
     {% endif %}
   {% elif trajet and don.transport_status in ('demande', 'accepte') %}
     <p>{{ trajet.display_name }} fait le trajet {{ trajet.from_city }} → {{ trajet.to_city }} le
-      {{ trajet.date }} :
+      {{ (don.transport_date or trajet.date)|date_fr }}{% if trajet.heure %} à {{ trajet.heure }}{% endif %} :
       {{ 'demande envoyée, en attente de réponse.' if don.transport_status == 'demande' else 'a accepté de porter ce don !' }}</p>
     {% if don.transport_status == 'accepte' and trajet.contact %}<p class="small">Contact : {{ trajet.contact }}</p>{% endif %}
   {% elif trajets %}
     {% if don.transport_status == 'refuse' %}<p class="muted small">Le voyageur sollicité n'a pas pu accepter.</p>{% endif %}
     <p>Des membres font un trajet qui passe près de chez vous puis de {{ receiver.city }} :</p>
     <ul class="list panel">
-      {% for t, explication in trajets %}
+      {% for item in trajets %}{% set t = item.trajet %}
       <li>
-        <strong>{{ t.display_name }}</strong> · {{ t.from_city }} → {{ t.to_city }}, le {{ t.date }}
-        {% if explication %}<div class="small">{{ explication }}</div>{% endif %}
+        <strong>{{ t.display_name }}</strong> · {{ t.from_city }} → {{ t.to_city }}
+        {% if t.jours %}<span class="tag tag-don">Régulier</span>{% endif %}
+        <div class="small">{{ item.description }}</div>
+        {% if item.explication %}<div class="small">{{ item.explication }}</div>{% endif %}
         {% if t.note %}<div class="small muted">{{ t.note }}</div>{% endif %}
-        <form method="post" action="{{ url_for('dons.transport', don_id=don.id) }}" style="margin-top:.4rem">
+        <form method="post" action="{{ url_for('dons.transport', don_id=don.id) }}" class="actions" style="margin:.4rem 0 0">
           <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
           <input type="hidden" name="action" value="demander">
           <input type="hidden" name="trajet_id" value="{{ t.id }}">
+          {% if t.jours %}
+          <label class="sr-only" for="date-{{ t.id }}">Date du trajet</label>
+          <select id="date-{{ t.id }}" name="transport_date" style="width:auto">
+            {% for d in item.prochaines %}<option value="{{ d.isoformat() }}">{{ d|date_fr }}</option>{% endfor %}
+          </select>
+          {% else %}
+          <input type="hidden" name="transport_date" value="{{ item.prochaines[0].isoformat() }}">
+          {% endif %}
           <button class="btn btn-small btn-olive">Lui demander de porter ce don</button>
         </form>
       </li>
@@ -75,7 +85,8 @@
 
   {% if is_transporter %}
   <h2>Transport</h2>
-  <p>Trajet {{ trajet.from_city }} → {{ trajet.to_city }}, le {{ trajet.date }}. À livrer à
+  <p>Trajet {{ trajet.from_city }} → {{ trajet.to_city }}, le
+    {{ (don.transport_date or trajet.date)|date_fr }}{% if trajet.heure %} à {{ trajet.heure }}{% endif %}. À livrer à
     {{ receiver_city }}.</p>
   {% if don.transport_status == 'demande' %}
   <div class="actions">

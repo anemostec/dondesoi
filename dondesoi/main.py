@@ -106,9 +106,10 @@ def tableau_de_bord():
         (uid,),
     ).fetchall()
     transports = db.execute(
-        """SELECT d.*, a.title, t.from_city, t.to_city, t.date
+        """SELECT d.*, a.title, t.from_city, t.to_city, t.heure,
+                  COALESCE(d.transport_date, t.date) AS date
            FROM dons d JOIN annonces a ON a.id = d.offre_id JOIN trajets t ON t.id = d.trajet_id
-           WHERE t.user_id = ? AND d.status = 'en_cours' ORDER BY t.date""",
+           WHERE t.user_id = ? AND d.status = 'en_cours' ORDER BY date""",
         (uid,),
     ).fetchall()
     invite_par = db.execute(

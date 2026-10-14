@@ -70,7 +70,12 @@ CREATE TABLE trajets (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     from_city TEXT NOT NULL,
     to_city TEXT NOT NULL,
+    -- Trajet ponctuel : date du trajet. Trajet régulier : date de début.
     date TEXT NOT NULL,
+    -- Trajet régulier : jours de la semaine (0 = lundi … 6 = dimanche), ex. « 0,3 ».
+    jours TEXT NOT NULL DEFAULT '',
+    heure TEXT NOT NULL DEFAULT '',
+    date_fin TEXT,
     note TEXT NOT NULL DEFAULT '',
     from_lat REAL,
     from_lon REAL,
@@ -91,6 +96,8 @@ CREATE TABLE dons (
         CHECK (status IN ('en_cours', 'realise', 'annule')),
     trajet_id INTEGER REFERENCES trajets(id) ON DELETE SET NULL,
     transport_status TEXT CHECK (transport_status IN ('demande', 'accepte', 'refuse')),
+    -- Date choisie quand le trajet sollicité est régulier.
+    transport_date TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     completed_at TEXT
 );
@@ -211,4 +218,4 @@ CREATE INDEX idx_notifications_user ON notifications (user_id, read_at);
 CREATE INDEX idx_annonces_open ON annonces (kind, status);
 CREATE INDEX idx_trajets_date ON trajets (date);
 
-PRAGMA user_version = 6;
+PRAGMA user_version = 7;

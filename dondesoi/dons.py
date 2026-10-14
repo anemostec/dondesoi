@@ -18,6 +18,7 @@ from flask import (Blueprint, abort, current_app, flash, g, redirect, render_tem
                    send_from_directory, url_for)
 
 from .db import get_db
+from .calendrier import date_fr, heure_fr, occurrences
 from .matching import meme_endroit, trajets_pour_don
 from .notifications import notify
 from .photos import COVER_SQL, PhotoInvalide, save_photo, thumb_name
@@ -190,12 +191,18 @@ def transport(don_id):
         trajet = db.execute("SELECT * FROM trajets WHERE id = ?", (trajet_id,)).fetchone()
         if trajet is None:
             abort(400)
-        db.execute("UPDATE dons SET trajet_id = ?, transport_status = 'demande' WHERE id = ?",
-                   (trajet_id, don_id))
+        # Pour un trajet régulier, le donateur choisit l'une des prochaines dates.
+        dates = [d.isoformat() for d in occurrences(trajet, nombre=6)]
+        jour = request.form.get("transport_date") or (dates[0] if dates else "")
+        if jour not in dates:
+            abort(400)
+        db.execute("UPDATE dons SET trajet_id = ?, transport_status = 'demande', transport_date = ? "
+                   "WHERE id = ?", (trajet_id, jour, don_id))
         db.commit()
+        heure = f" à {heure_fr(trajet['heure'])}" if trajet["heure"] else ""
         notify(trajet["user_id"],
                f"Pourriez-vous porter un don lors de votre trajet {trajet['from_city']} → "
-               f"{trajet['to_city']} du {trajet['date']} ?",
+               f"{trajet['to_city']} du {date_fr(jour)}{heure} ?",
                url_for("dons.detail", don_id=don_id))
         flash("Demande de transport envoyée au voyageur.")
     elif action in ("accepte", "refuse"):

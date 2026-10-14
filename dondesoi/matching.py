@@ -18,6 +18,7 @@ passent toujours en premier, quel que soit le score.
 from datetime import date
 
 from . import CATEGORY_LABELS, ESSENTIAL_CATEGORIES
+from .calendrier import SQL_A_VENIR, description, occurrences
 from .geo import distance_rows, position_sur_trajet
 from .photos import COVER_SQL
 from .sens import similarite, vecteurs
@@ -211,26 +212,37 @@ def meme_endroit(donor, receiver):
 def trajets_pour_don(db, donor, receiver):
     """Trajets prévus par d'autres membres qui passent près du donateur puis du receveur.
 
-    Retourne une liste de (trajet, explication).
+    Retourne une liste de dicts : trajet, explication (ou None), description (« le mar. 21 oct.
+    à 9 h », « tous les lundis à 7 h 30 »…) et prochaines dates (pour un trajet régulier, le
+    donateur choisit l'une d'elles).
     """
     proche, _ = meme_endroit(donor, receiver)
     if proche:
         return []
+    aujourd_hui = date.today().isoformat()
     rows = db.execute(
-        """SELECT t.*, u.display_name FROM trajets t JOIN users u ON u.id = t.user_id
-           WHERE t.date >= ? AND t.user_id NOT IN (?, ?) ORDER BY t.date""",
-        (date.today().isoformat(), donor["id"], receiver["id"]),
+        f"""SELECT t.*, u.display_name FROM trajets t JOIN users u ON u.id = t.user_id
+            WHERE {SQL_A_VENIR} AND t.user_id NOT IN (?, ?) ORDER BY t.date""",
+        (aujourd_hui, aujourd_hui, donor["id"], receiver["id"]),
     ).fetchall()
     src, dst = normalize_city(donor["city"]), normalize_city(receiver["city"])
     out = []
     for t in rows:
+        prochaines = occurrences(t, nombre=6)
+        if not prochaines:
+            continue
+        explication = None
         coords = (t["from_lat"], t["to_lat"], donor["lat"], receiver["lat"])
         if None in coords:
-            if normalize_city(t["from_city"]) == src and normalize_city(t["to_city"]) == dst:
-                out.append((t, None))
-            continue
-        t_d, ecart_d = position_sur_trajet(donor["lat"], donor["lon"], t)
-        t_r, ecart_r = position_sur_trajet(receiver["lat"], receiver["lon"], t)
-        if ecart_d <= DETOUR_KM and ecart_r <= DETOUR_KM and t_d < t_r:
-            out.append((t, f"passe à {km(ecart_d)} de chez vous et à {km(ecart_r)} du receveur"))
+            if not (normalize_city(t["from_city"]) == src and normalize_city(t["to_city"]) == dst):
+                continue
+        else:
+            t_d, ecart_d = position_sur_trajet(donor["lat"], donor["lon"], t)
+            t_r, ecart_r = position_sur_trajet(receiver["lat"], receiver["lon"], t)
+            if not (ecart_d <= DETOUR_KM and ecart_r <= DETOUR_KM and t_d < t_r):
+                continue
+            explication = f"passe à {km(ecart_d)} de chez vous et à {km(ecart_r)} du receveur"
+        out.append({"trajet": t, "explication": explication, "description": description(t),
+                    "prochaines": prochaines})
+    out.sort(key=lambda x: x["prochaines"][0])
     return out

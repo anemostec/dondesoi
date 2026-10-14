@@ -102,8 +102,21 @@ def create_app(test_config=None):
     app.register_blueprint(notifications.bp)
     app.register_blueprint(invitations.bp)
 
+    from .calendrier import date_fr
     from .photos import thumb_name
     app.jinja_env.filters["thumb"] = thumb_name
+    app.jinja_env.filters["date_fr"] = date_fr
+
+    @app.url_defaults
+    def version_statique(endpoint, values):
+        """Ajoute ?v=<date de modification> aux fichiers statiques : après une mise à jour,
+        les navigateurs rechargent la feuille de style et les scripts au lieu de garder
+        l'ancienne version en cache."""
+        if endpoint == "static" and "filename" in values and "v" not in values:
+            try:
+                values["v"] = int(os.stat(os.path.join(app.static_folder, values["filename"])).st_mtime)
+            except OSError:
+                pass
 
     @app.template_filter("heure")
     def heure(value):
