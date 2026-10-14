@@ -111,10 +111,15 @@ def tableau_de_bord():
            WHERE t.user_id = ? AND d.status = 'en_cours' ORDER BY t.date""",
         (uid,),
     ).fetchall()
+    invite_par = db.execute(
+        "SELECT u.id, u.display_name FROM users u JOIN users moi ON moi.invited_by = u.id "
+        "WHERE moi.id = ?", (uid,),
+    ).fetchone()
     a_des_dons = any(a["kind"] == "don" for a in mes_annonces)
     a_des_besoins = any(a["kind"] == "besoin" for a in mes_annonces)
     return render_template(
         "pages/tableau_de_bord.html",
         mes_annonces=mes_annonces, dons_donnes=dons_donnes, dons_recus=dons_recus,
         transports=transports, a_des_dons=a_des_dons, a_des_besoins=a_des_besoins,
+        invite_par=invite_par,
     )

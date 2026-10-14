@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Ne plus recevoir d'invitation{% endblock %}
+{% block content %}
+<div class="prose">
+<h1>Ne plus recevoir d'invitation</h1>
+<p>Vous avez reçu une invitation à rejoindre Don de soi. Si vous confirmez, votre adresse sera
+  effacée et plus aucun membre ne pourra vous envoyer d'invitation (nous ne gardons qu'une empreinte
+  chiffrée de l'adresse, pour la reconnaître).</p>
+<form method="post" class="actions">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <button class="btn btn-danger">Je ne souhaite plus recevoir d'invitation</button>
+  <a class="btn btn-ghost" href="{{ url_for('main.accueil') }}">Découvrir le site</a>
+</form>
+</div>
+{% endblock %}

@@ -2,6 +2,7 @@
 {% block title %}Rejoindre Don de soi{% endblock %}
 {% block content %}
 <h1>Rejoindre Don de soi</h1>
+{% if invitation %}<div class="flash">{{ invitation.inviter_name }} vous invite à rejoindre la famille Don de soi.</div>{% endif %}
 {{ verset('commandement') }}
 <p class="muted">Avant de vous inscrire, prenez le temps de lire <a href="{{ url_for('main.charte') }}">la charte</a>
   et <a href="{{ url_for('main.pour_qui') }}">à qui s'adresse Don de soi</a>.</p>

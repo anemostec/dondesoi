@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS invitations_refusees;
+DROP TABLE IF EXISTS invitations;
 DROP TABLE IF EXISTS limites;
 DROP TABLE IF EXISTS annonce_vecteurs;
 DROP TABLE IF EXISTS lieux;
@@ -26,6 +28,8 @@ CREATE TABLE users (
     email_notifications INTEGER NOT NULL DEFAULT 1,
     lat REAL,
     lon REAL,
+    -- Qui a invité ce membre (visible seulement de lui et de la personne qui l'a invité).
+    invited_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
     charter_accepted_at TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -179,9 +183,30 @@ CREATE TABLE limites (
 );
 CREATE INDEX idx_limites ON limites (cle, created_at);
 
+-- Invitations : lien personnel à partager (email vide) ou invitation par e-mail.
+-- L'adresse d'une personne invitée qui ne s'inscrit pas est effacée après 30 jours.
+CREATE TABLE invitations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    inviter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token TEXT UNIQUE NOT NULL,
+    email TEXT,
+    message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    accepted_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    accepted_at TEXT
+);
+CREATE INDEX idx_invitations_inviter ON invitations (inviter_id);
+CREATE INDEX idx_invitations_email ON invitations (email);
+
+-- Personnes qui ne veulent plus recevoir d'invitations (empreinte de l'adresse seulement).
+CREATE TABLE invitations_refusees (
+    email_hash TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX idx_messages_don ON messages (don_id);
 CREATE INDEX idx_notifications_user ON notifications (user_id, read_at);
 CREATE INDEX idx_annonces_open ON annonces (kind, status);
 CREATE INDEX idx_trajets_date ON trajets (date);
 
-PRAGMA user_version = 4;
+PRAGMA user_version = 5;

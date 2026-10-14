@@ -642,3 +642,90 @@ def test_envoi_par_sendmail(app, tmp_path):
     mail = capture.read_text()
     assert "To: anne@ex.fr" in mail and "Reply-To: contact@exemple.org" in mail
     assert "ne-pas-repondre@exemple.org" in mail
+
+
+# --- Invitations ---------------------------------------------------------------------
+
+def invitation_link(app, to):
+    mail = [m for m in app.extensions["outbox"] if m["to"] == to][-1]
+    return mail, re.search(r"http://localhost(/rejoindre/\S+)", mail["text"]).group(1)
+
+
+def test_invitation_par_email_et_invite_par(app):
+    philippe = app.test_client()
+    register(philippe, "philippe@ex.fr", "Philippe", "Lyon")
+    philippe.post("/inviter", data={"_csrf": csrf(philippe, "/inviter"),
+                                    "email": "Nathanael@Ex.fr", "message": "Viens voir !"})
+    mail, link = invitation_link(app, "nathanael@ex.fr")
+    assert "Philippe vous invite" in mail["subject"] and "Viens voir !" in mail["text"]
+    assert "philippe@ex.fr" not in mail["text"]          # l'adresse de l'invitant n'est pas révélée
+
+    nathanael = app.test_client()
+    page = nathanael.get(link).get_data(as_text=True)
+    assert "Philippe vous invite" in page and "Jn 1,46" in page
+    assert 'value="nathanael@ex.fr"' in nathanael.get("/inscription").get_data(as_text=True)
+    register(nathanael, "nathanael@ex.fr", "Nathanaël", "Lyon")
+
+    with app.app_context():
+        db = get_db()
+        assert db.execute("SELECT invited_by FROM users WHERE email = 'nathanael@ex.fr'").fetchone()[0] == 1
+        assert db.execute("SELECT COUNT(*) FROM invitations WHERE email IS NOT NULL").fetchone()[0] == 0
+    assert any("a rejoint la famille" in b for b in unread(app, 1))
+    assert "Nathanaël" in philippe.get("/inviter").get_data(as_text=True)
+    assert "à l'invitation de" in nathanael.get("/tableau-de-bord").get_data(as_text=True)
+    # Le lien ne sert qu'une fois.
+    assert app.test_client().get(link).status_code == 302
+
+
+def test_lien_personnel(app):
+    philippe, a, b = app.test_client(), app.test_client(), app.test_client()
+    register(philippe, "philippe@ex.fr", "Philippe", "Lyon")
+    page = philippe.get("/inviter").get_data(as_text=True)
+    link = re.search(r'id="lien" value="http://localhost(/rejoindre/[^"]+)"', page).group(1)
+    for client, email in ((a, "a@ex.fr"), (b, "b@ex.fr")):   # réutilisable
+        assert client.get(link).status_code == 200
+        register(client, email, email[0].upper(), "Lyon")
+    with app.app_context():
+        assert get_db().execute("SELECT COUNT(*) FROM users WHERE invited_by = 1").fetchone()[0] == 2
+    assert link in philippe.get("/inviter").get_data(as_text=True)    # toujours le même lien
+
+
+def test_garde_fous_invitations(app):
+    philippe = app.test_client()
+    register(philippe, "philippe@ex.fr", "Philippe", "Lyon")
+    send = lambda email: philippe.post("/inviter", data={"_csrf": csrf(philippe, "/inviter"),
+                                                         "email": email})
+    send("philippe@ex.fr")                 # déjà membre : rien n'est envoyé
+    send("x@ex.fr"); send("x@ex.fr")       # une seule invitation par adresse
+    assert [m["to"] for m in app.extensions["outbox"]] == ["x@ex.fr"]
+
+    # Refus : plus aucune invitation, adresse effacée.
+    _, link = invitation_link(app, "x@ex.fr")
+    token = link.rsplit("/", 1)[1]
+    visitor = app.test_client()
+    visitor.post(f"/invitation/{token}/refuser",
+                 data={"_csrf": csrf(visitor, f"/invitation/{token}/refuser")})
+    with app.app_context():
+        assert get_db().execute("SELECT COUNT(*) FROM invitations WHERE email = 'x@ex.fr'").fetchone()[0] == 0
+    send("x@ex.fr")
+    assert len(app.extensions["outbox"]) == 1
+
+    # Pas plus de 10 par jour.
+    for i in range(12):
+        send(f"ami{i}@ex.fr")
+    # Chaque tentative compte (même sans envoi, pour qu'on ne puisse pas sonder qui est
+    # inscrit) : 4 tentatives déjà faites, donc 6 envois de plus, 10 tentatives en tout.
+    assert len(app.extensions["outbox"]) == 1 + 6
+
+
+def test_invitations_effacees_apres_30_jours(app):
+    philippe = app.test_client()
+    register(philippe, "philippe@ex.fr", "Philippe", "Lyon")
+    philippe.post("/inviter", data={"_csrf": csrf(philippe, "/inviter"), "email": "y@ex.fr"})
+    with app.app_context():
+        db = get_db()
+        db.execute("UPDATE invitations SET created_at = datetime('now', '-31 days') WHERE email IS NOT NULL")
+        db.commit()
+    philippe.get("/inviter")
+    with app.app_context():
+        assert get_db().execute("SELECT COUNT(*) FROM invitations WHERE email = 'y@ex.fr'").fetchone()[0] == 0

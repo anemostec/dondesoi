@@ -57,13 +57,20 @@ def inscription():
             except db.IntegrityError:
                 error = "Un compte existe déjà avec cette adresse."
             else:
+                from .invitations import accepter
+                accepter(db, cur.lastrowid)   # relie au membre qui a invité, s'il y en a un
                 session.clear()
                 session["user_id"] = cur.lastrowid
                 flash("Bienvenue dans la famille Don de soi ! Commencez par dire ce que vous "
                       "aimeriez donner, et ce dont vous auriez besoin.")
                 return redirect(url_for("main.tableau_de_bord"))
         flash(error, "erreur")
-    return render_template("auth/inscription.html", engagements=ENGAGEMENTS, form=form)
+    from .invitations import invitation_en_cours
+    invitation = invitation_en_cours()
+    if request.method == "GET" and invitation is not None and invitation["email"]:
+        form = {"email": invitation["email"]}
+    return render_template("auth/inscription.html", engagements=ENGAGEMENTS, form=form,
+                           invitation=invitation)
 
 
 @bp.route("/connexion", methods=("GET", "POST"))

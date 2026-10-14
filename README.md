@@ -27,6 +27,7 @@ L'esprit du projet est décrit dans `../don_de_soi.tex` et sur la page « Charte
 | Dignité de celui qui demande | Le nom de l'auteur d'un besoin n'est visible que des membres |
 | L'Évangile au cœur du site | Passages placés là où ils éclairent le geste, « Parole du jour » (`evangile.py`, Louis Segond 1910, domaine public) |
 | Trajets pour éviter les frais d'expédition | `trajets.py` : sont proposés les trajets qui passent à moins de 15 km du donateur puis du receveur, dans le bon sens |
+| Inviter (« Viens, et vois », Jn 1,46) | Lien personnel à partager ou invitation par e-mail (`invitations.py`) ; « invité par » visible seulement des deux personnes ; 10 tentatives par jour, une invitation par adresse, refus définitif possible, adresse effacée après 30 jours sans inscription |
 | Avis après le don, droit de réponse, sans blocage | Table `avis` ; visibles sur le profil du receveur ; ils n'empêchent jamais un don |
 | Pas de prosélytisme, liberté de partir | Pages « Charte » et « À qui s'adresse Don de soi » |
 | Pas de publicité, partenaires gratuits seulement | Page « Partenaires » |
@@ -116,6 +117,7 @@ dondesoi/
   notifications.py notifications et e-mails
   photos.py        traitement des photos (Pillow)
   evangile.py      passages d'Évangile cités dans le site
+  invitations.py   invitations de nouveaux membres
   trajets.py       déplacements prévus
   templates/       pages HTML (Jinja)
   static/style.css

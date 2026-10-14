@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Inviter un proche{% endblock %}
+{% block content %}
+<h1>Inviter un proche</h1>
+{{ verset('viens_et_vois') }}
+<p class="muted">Don de soi grandit par la confiance : invitez celles et ceux qui pourraient donner
+  ou recevoir. Sans insister : on propose de venir voir, chacun reste libre.</p>
+
+<div class="two-col">
+<div>
+  <div class="panel">
+    <h2 style="margin-top:0">Votre lien personnel</h2>
+    <p class="small muted">À partager comme vous voulez : WhatsApp, SMS, e-mail, réseaux sociaux. Les
+      personnes qui s'inscrivent par ce lien seront reliées à vous.</p>
+    <div class="share-row">
+      <input type="text" id="lien" value="{{ lien }}" readonly aria-label="Votre lien d'invitation">
+    </div>
+    <div class="actions">
+      <button type="button" class="btn" data-partager data-url="{{ lien }}"
+              data-texte="Je t'invite à rejoindre Don de soi : une famille où l'on donne et reçoit gratuitement. Viens, et vois !">
+        Partager le lien</button>
+      <button type="button" class="btn btn-ghost" data-copier="#lien">Copier</button>
+      <span class="small muted" data-copie-ok hidden>Lien copié.</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0">Inviter par e-mail</h2>
+    <form class="stack" method="post">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div><label for="email">Adresse e-mail de la personne</label>
+        <input type="email" id="email" name="email" required></div>
+      <div><label for="message">Un mot personnel <span class="hint">(facultatif, il sera dans l'e-mail)</span></label>
+        <textarea id="message" name="message" maxlength="1000" style="min-height:5rem"
+                  placeholder="Ex. : J'ai pensé à toi, tu donnes déjà tellement autour de toi…"></textarea></div>
+      <p class="hint">L'e-mail vient de Don de soi et indique votre prénom ; votre propre adresse
+        n'est pas communiquée. La personne peut refuser toute invitation future, et son adresse est
+        effacée si elle ne s'inscrit pas dans les {{ conservation }} jours.</p>
+      <div><button class="btn">Envoyer l'invitation</button></div>
+    </form>
+  </div>
+</div>
+
+<aside>
+  <div class="panel">
+    <h3 style="margin-top:0">Ont rejoint grâce à vous</h3>
+    {% for m in rejoints %}
+      <p class="small"><a href="{{ url_for('auth.membre', user_id=m.id) }}">{{ m.display_name }}</a>
+        <span class="muted">· {{ m.city }} · {{ m.created_at|heure }}</span></p>
+    {% else %}
+      <p class="small muted">Personne pour l'instant.</p>
+    {% endfor %}
+    <p class="hint">Ce lien entre vous n'est visible que de vous deux.</p>
+  </div>
+  {% if en_attente %}
+  <div class="panel">
+    <h3 style="margin-top:0">Invitations en attente</h3>
+    {% for i in en_attente %}
+      <p class="small">{{ i.email }} <span class="muted">· {{ i.created_at|heure }}</span></p>
+    {% endfor %}
+  </div>
+  {% endif %}
+</aside>
+</div>
+<script src="{{ url_for('static', filename='partage.js') }}" defer></script>
+{% endblock %}

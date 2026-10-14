@@ -93,13 +93,14 @@ def create_app(test_config=None):
     security.init_app(app)
     notifications.init_app(app)
 
-    from . import annonces, auth, dons, main, trajets
+    from . import annonces, auth, dons, invitations, main, trajets
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(annonces.bp)
     app.register_blueprint(dons.bp)
     app.register_blueprint(trajets.bp)
     app.register_blueprint(notifications.bp)
+    app.register_blueprint(invitations.bp)
 
     from .photos import thumb_name
     app.jinja_env.filters["thumb"] = thumb_name

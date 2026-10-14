@@ -116,6 +116,30 @@ MIGRATIONS = [
     );
     CREATE INDEX idx_limites ON limites (cle, created_at);
     """,
+    # Invitations de nouveaux membres.
+    """
+    ALTER TABLE users ADD COLUMN invited_by INTEGER REFERENCES users(id) ON DELETE SET NULL;
+    -- Invitations : lien personnel à partager (email vide) ou invitation par e-mail.
+    -- L'adresse d'une personne invitée qui ne s'inscrit pas est effacée après 30 jours.
+    CREATE TABLE invitations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        inviter_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT UNIQUE NOT NULL,
+        email TEXT,
+        message TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        accepted_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        accepted_at TEXT
+    );
+    CREATE INDEX idx_invitations_inviter ON invitations (inviter_id);
+    CREATE INDEX idx_invitations_email ON invitations (email);
+
+    -- Personnes qui ne veulent plus recevoir d'invitations (empreinte de l'adresse seulement).
+    CREATE TABLE invitations_refusees (
+        email_hash TEXT PRIMARY KEY,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    """,
 ]
 
 

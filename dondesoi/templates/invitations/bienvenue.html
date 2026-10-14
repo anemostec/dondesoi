@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Vous êtes invité{% endblock %}
+{% block content %}
+<div class="prose">
+<h1>{{ invitation.inviter_name }} vous invite à rejoindre Don de soi</h1>
+{{ verset('viens_et_vois') }}
+{% if invitation.message %}
+<div class="panel panel-soft">
+  <p class="small muted" style="margin-top:0">{{ invitation.inviter_name }} vous écrit :</p>
+  <p style="white-space:pre-line">« {{ invitation.message }} »</p>
+</div>
+{% endif %}
+<p>Don de soi est une famille où l'on donne et reçoit gratuitement : un objet, un repas, un coup
+  de main, du temps, une visite, une écoute, une prière. Sans argent entre membres, sans publicité,
+  dans la discrétion : le nom d'un donateur n'est jamais affiché.</p>
+<p>Chacun est à la fois donneur et receveur, et les besoins de première nécessité passent toujours
+  en premier.</p>
+<div class="actions">
+  <a class="btn" href="{{ url_for('auth.inscription') }}">Rejoindre Don de soi</a>
+  <a class="btn btn-ghost" href="{{ url_for('main.fonctionnement') }}">Voir comment ça marche</a>
+  <a class="btn btn-ghost" href="{{ url_for('main.charte') }}">Lire la charte</a>
+</div>
+<p class="small muted">Vous restez libre : rien ne vous engage tant que vous ne vous inscrivez pas.
+  {% if invitation.email %}<a href="{{ url_for('invitations.refuser', token=request.view_args.token) }}">Ne plus recevoir d'invitation</a>.{% endif %}</p>
+</div>
+{% endblock %}

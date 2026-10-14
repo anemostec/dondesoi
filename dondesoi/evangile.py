@@ -93,6 +93,10 @@ PASSAGES = {
     "talents": ("C'est bien, bon et fidèle serviteur ; tu as été fidèle en peu de chose, je te "
                 "confierai beaucoup.", "Mt 25,21"),
 
+    # Inviter : non pas convaincre, mais proposer de venir voir.
+    "viens_et_vois": ("Nathanaël lui dit : Peut-il venir de Nazareth quelque chose de bon ? Philippe "
+                      "lui répondit : Viens, et vois.", "Jn 1,46"),
+
     # L'accueil et la liberté.
     "pas_contre_nous": ("Qui n'est pas contre nous est pour nous.", "Mc 9,40"),
     "vous_en_aller": ("Et vous, ne voulez-vous pas aussi vous en aller ?", "Jn 6,67"),

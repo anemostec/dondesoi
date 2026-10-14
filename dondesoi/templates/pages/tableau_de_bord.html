@@ -2,6 +2,8 @@
 {% block title %}Mon espace{% endblock %}
 {% block content %}
 <h1>Bonjour {{ g.user.display_name }}</h1>
+{% if invite_par %}<p class="muted small">Vous avez rejoint Don de soi à l'invitation de
+  <a href="{{ url_for('auth.membre', user_id=invite_par.id) }}">{{ invite_par.display_name }}</a>.</p>{% endif %}
 {{ parole_du_jour() }}
 
 {% if not a_des_dons or not a_des_besoins %}
@@ -24,6 +26,7 @@
   <a class="btn btn-ghost" href="{{ url_for('annonces.nouvelle', kind='don') }}">Je propose un don</a>
   <a class="btn btn-ghost" href="{{ url_for('annonces.nouvelle', kind='besoin') }}">J'exprime un besoin</a>
   <a class="btn btn-ghost" href="{{ url_for('trajets.mes_trajets') }}">Mes trajets</a>
+  <a class="btn btn-ghost" href="{{ url_for('invitations.inviter') }}">Inviter un proche</a>
   <a class="btn btn-ghost" href="{{ url_for('auth.profil') }}">Mon profil</a>
 </div>
 
