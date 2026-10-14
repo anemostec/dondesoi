@@ -53,7 +53,8 @@ Toute variable d'environnement `DONDESOI_XXX` remplace le réglage `XXX` :
 | Variable | Rôle |
 |---|---|
 | `DONDESOI_SECRET_KEY` | clé de session (sinon générée dans `instance/secret_key`) |
-| `DONDESOI_MAIL_BACKEND` | `console` (défaut : e-mails affichés dans le terminal) ou `smtp` |
+| `DONDESOI_MAIL_BACKEND` | `console` (défaut : e-mails affichés dans le terminal), `smtp`, ou `sendmail` (programme d'envoi local, sans mot de passe chez alwaysdata) |
+| `DONDESOI_MAIL_REPLY_TO` | adresse où arrivent les réponses (facultatif) |
 | `DONDESOI_SMTP_HOST`, `DONDESOI_SMTP_PORT`, `DONDESOI_SMTP_USER`, `DONDESOI_SMTP_PASSWORD` | serveur d'envoi (STARTTLS) |
 | `DONDESOI_MAIL_FROM` | expéditeur des e-mails |
 | `DONDESOI_SOURCE_URL` | lien vers le code source, affiché en pied de page (exigé par l'AGPL) ; par défaut ce dépôt. Une version modifiée mise en ligne doit pointer vers son propre code |
@@ -89,7 +90,8 @@ Le site de test tourne sur https://dondesoi.alwaysdata.net (offre gratuite : 1 G
 256 Mo de mémoire, donc sans le modèle de sens). Code dans `~/dondesoi/app`, environnement
 Python dans `~/dondesoi/venv` (Flask, Pillow, gunicorn, sans fastembed). Site déclaré dans
 l'interface alwaysdata en « Python WSGI » (`wsgi.py`), variables d'environnement
-`DONDESOI_SECRET_KEY`, `DONDESOI_BEHIND_PROXY=true`, `DONDESOI_SEMANTIC_MODEL=` (vide).
+`DONDESOI_SECRET_KEY`, `DONDESOI_BEHIND_PROXY=true`, `DONDESOI_SEMANTIC_MODEL=` (vide), `DONDESOI_MAIL_BACKEND=sendmail`,
+`DONDESOI_MAIL_FROM="Don de soi <dondesoi@alwaysdata.net>"` (adresse redirigée vers la boîte du responsable).
 Mise à jour :
 
 ```bash

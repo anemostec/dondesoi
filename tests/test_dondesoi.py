@@ -625,3 +625,20 @@ def test_derriere_un_proxy(tmp_path):
     assert app.config["SESSION_COOKIE_SECURE"] is True
     assert "Secure" in resp.headers.get("Set-Cookie", "")
     assert client.get("/confidentialite").status_code == 200
+
+
+def test_envoi_par_sendmail(app, tmp_path):
+    """Le mode « sendmail » passe le message complet au programme d'envoi local."""
+    capture = tmp_path / "mail.eml"
+    fake = tmp_path / "sendmail"
+    fake.write_text(f"#!/bin/sh\ncat > {capture}\n")
+    fake.chmod(0o755)
+    app.config.update(MAIL_BACKEND="sendmail", SENDMAIL_PATH=str(fake),
+                      MAIL_FROM="Don de soi <ne-pas-repondre@exemple.org>",
+                      MAIL_REPLY_TO="contact@exemple.org")
+    with app.test_request_context():
+        from dondesoi.notifications import send_email
+        send_email("anne@ex.fr", "Bonjour", "Un message accentué : prière.")
+    mail = capture.read_text()
+    assert "To: anne@ex.fr" in mail and "Reply-To: contact@exemple.org" in mail
+    assert "ne-pas-repondre@exemple.org" in mail

@@ -54,6 +54,9 @@ def create_app(test_config=None):
         MAX_CONTENT_LENGTH=40 * 1024 * 1024,
         MAIL_BACKEND="console",
         MAIL_FROM="Don de soi <ne-pas-repondre@dondesoi.local>",
+        # Adresse où arrivent les réponses aux e-mails du site (facultatif).
+        MAIL_REPLY_TO="",
+        SENDMAIL_PATH="/usr/sbin/sendmail",
         # Lien vers le code source, que l'AGPL demande d'offrir aux utilisateurs.
         SOURCE_URL="https://github.com/anemostec/dondesoi",
         TIMEZONE="Europe/Paris",

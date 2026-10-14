@@ -2,12 +2,15 @@
 
 Envoi des e-mails selon MAIL_BACKEND :
 - "smtp"    : via SMTP_HOST / SMTP_PORT / SMTP_USER / SMTP_PASSWORD / MAIL_FROM ;
+- "sendmail": via le programme d'envoi local (SENDMAIL_PATH), sans mot de passe
+              quand l'hébergeur le préconfigure (c'est le cas chez alwaysdata) ;
 - "console" : écrits dans le journal du serveur (par défaut, pour développer) ;
 - "memory"  : gardés dans app.extensions["outbox"] (pour les tests).
 
 Les textes ne révèlent jamais l'identité d'un donateur.
 """
 import smtplib
+import subprocess
 import sys
 from email.message import EmailMessage
 
@@ -52,7 +55,7 @@ def send_email(to, subject, text):
     if backend == "memory":
         app.extensions.setdefault("outbox", []).append({"to": to, "subject": subject, "text": text})
         return
-    if backend != "smtp":
+    if backend not in ("smtp", "sendmail"):
         print(f"--- E-mail (non envoyé, MAIL_BACKEND=console) à {to} : {subject}\n{text}---",
               file=sys.stderr)
         return
@@ -61,6 +64,15 @@ def send_email(to, subject, text):
     msg["To"] = to
     msg["Subject"] = subject
     msg.set_content(text)
+    if app.config.get("MAIL_REPLY_TO"):
+        msg["Reply-To"] = app.config["MAIL_REPLY_TO"]
+    if backend == "sendmail":
+        try:
+            subprocess.run([app.config.get("SENDMAIL_PATH", "/usr/sbin/sendmail"), "-t", "-i"],
+                           input=msg.as_bytes(), check=True, timeout=20)
+        except (OSError, subprocess.SubprocessError):
+            app.logger.exception("Échec de l'envoi d'un e-mail à %s", to)
+        return
     try:
         with smtplib.SMTP(app.config["SMTP_HOST"], int(app.config.get("SMTP_PORT", 587)),
                           timeout=10) as smtp:
