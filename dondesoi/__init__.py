@@ -79,7 +79,8 @@ def create_app(test_config=None):
         from werkzeug.middleware.proxy_fix import ProxyFix
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
         app.config.update(SESSION_COOKIE_SECURE=True, PREFERRED_URL_SCHEME="https")
-    app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
+    # Flask définit déjà la clé (à None) : setdefault ne suffirait pas.
+    app.config["SESSION_COOKIE_SAMESITE"] = app.config.get("SESSION_COOKIE_SAMESITE") or "Lax"
     if not app.config.get("SECRET_KEY"):
         app.config["SECRET_KEY"] = _secret_key(app.instance_path)
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
