@@ -22,6 +22,7 @@ def app(tmp_path):
         "SEMANTIC_MODEL": "",
     })
     app.extensions["geocoder"] = FakeGeocoder()
+    app.extensions["communes_cp"] = fake_communes
     with app.app_context():
         init_db()
     return app
@@ -32,6 +33,21 @@ VILLES = {
     "lyon": (45.758, 4.835), "villeurbanne": (45.767, 4.880), "grenoble": (45.188, 5.724),
     "paris": (48.857, 2.352), "valence": (44.933, 4.892), "marseille": (43.296, 5.370),
 }
+
+
+CODES_POSTAUX = {"lyon": "69001", "villeurbanne": "69100", "grenoble": "38000",
+                 "paris": "75001", "valence": "26000", "marseille": "13001"}
+
+
+def fake_communes(cp):
+    """Faux geo.api.gouv.fr : communes d'un code postal (deux Chenereilles pour les tests)."""
+    if cp == "42560":
+        return [{"nom": "Chenereilles", "lat": 45.48, "lon": 4.09, "dep": "Loire"},
+                {"nom": "Marols", "lat": 45.48, "lon": 4.04, "dep": "Loire"}]
+    if cp == "43190":
+        return [{"nom": "Chenereilles", "lat": 45.11, "lon": 4.24, "dep": "Haute-Loire"}]
+    return [{"nom": v.capitalize(), "lat": VILLES[v][0], "lon": VILLES[v][1], "dep": ""}
+            for v, c in CODES_POSTAUX.items() if c == cp]
 
 
 class FakeGeocoder:
@@ -51,7 +67,7 @@ def csrf(client, path="/connexion"):
 
 def register(client, email, name, city):
     data = {"_csrf": csrf(client, "/inscription"), "email": email, "password": "motdepasse",
-            "display_name": name, "city": city}
+            "display_name": name, "city": city, "postal_code": CODES_POSTAUX.get(city.lower(), "")}
     for key in ("gratuite", "double", "argent", "esprit"):
         data[f"engagement_{key}"] = "1"
     return client.post("/inscription", data=data)
@@ -200,7 +216,7 @@ def test_email_desactivable(app):
     client = app.test_client()
     register(client, "a@ex.fr", "Anne", "Lyon")
     client.post("/profil", data={"_csrf": csrf(client, "/profil"), "display_name": "Anne",
-                                 "city": "Lyon"})
+                                 "city": "Lyon", "postal_code": "69001"})
     with app.test_request_context():
         from dondesoi.notifications import notify
         notify(1, "Test", "/")
@@ -444,7 +460,11 @@ def test_geocodage_mis_en_cache(app):
         user = get_db().execute("SELECT lat, lon FROM users").fetchone()
         assert user["lat"] == pytest.approx(45.767)
         assert get_db().execute("SELECT COUNT(*) FROM annonces WHERE lat IS NOT NULL").fetchone()[0] == 2
-    assert app.extensions["geocoder"].calls == ["Villeurbanne"]   # une seule question au service
+    # Les coordonnées viennent de la liste des communes du code postal (une seule question au
+    # service, gardée en cache), sans recherche par nom.
+    assert app.extensions["geocoder"].calls == []
+    with app.app_context():
+        assert get_db().execute("SELECT COUNT(*) FROM codes_postaux").fetchone()[0] == 1
 
 
 def test_api_geo_gouv(app, monkeypatch):
@@ -807,7 +827,8 @@ def test_trajet_regulier_avec_retour_et_transport(app):
 
     # Paul fait Villeurbanne → Marseille tous les lundis et jeudis à 7 h 30, retour à 18 h.
     page = paul.post("/trajets/", data={
-        "_csrf": csrf(paul, "/trajets/"), "from_city": "Villeurbanne", "to_city": "Marseille",
+        "_csrf": csrf(paul, "/trajets/"), "from_city": "Villeurbanne", "from_cp": "69100",
+        "to_city": "Marseille", "to_cp": "13001",
         "frequence": "regulier", "jours": ["0", "3"], "heure": "07:30",
         "retour": "1", "heure_retour": "18:00"}, follow_redirects=True).get_data(as_text=True)
     assert "avec son retour" in page and "tous les lundis et jeudis à 7 h 30" in page
@@ -848,3 +869,45 @@ def test_trajet_regulier_termine_disparait(app):
                    "VALUES (1, 'Lyon', 'Paris', '2020-01-01', '0', '2020-06-01')")
         db.commit()
     assert "Paris" not in paul.get("/trajets/").get_data(as_text=True)
+
+
+
+# --- Ville vérifiée par le code postal --------------------------------------------------
+
+def test_ville_verifiee_par_code_postal(app):
+    client = app.test_client()
+    data = {"_csrf": csrf(client, "/inscription"), "email": "c@ex.fr", "password": "motdepasse",
+            "display_name": "Claire", **{f"engagement_{k}": "1" for k in
+                                         ("gratuite", "double", "argent", "esprit")}}
+    # Mauvaise paire : le site indique les communes du code postal.
+    page = client.post("/inscription", data={**data, "city": "Tence", "postal_code": "42560"})
+    texte = page.get_data(as_text=True)
+    assert "n&#39;a pas le code postal 42560" in texte and "Chenereilles, Marols" in texte
+    # Deux Chenereilles : le code postal fait la différence.
+    client.post("/inscription", data={**data, "city": "chenereilles", "postal_code": "43190"})
+    with app.app_context():
+        u = get_db().execute("SELECT city, postal_code, lat FROM users").fetchone()
+    assert (u["city"], u["postal_code"], u["lat"]) == ("Chenereilles", "43190", 45.11)
+
+    # Le point d'accès utilisé par le formulaire.
+    assert client.get("/communes/42560").get_json()["communes"][0]["dep"] == "Loire"
+    assert client.get("/communes/00000").get_json()["communes"] == []
+
+
+def test_ville_annonce_et_trajet(app):
+    client = app.test_client()
+    register(client, "a@ex.fr", "Anne", "Lyon")
+    # Annonce dans la ville du membre : rien à saisir.
+    ok = post_annonce(client, "don", "objet", "Table")
+    assert isinstance(ok, int)
+    # Annonce ailleurs : le code postal est vérifié.
+    page = client.post("/annonces/nouvelle", data={
+        "_csrf": csrf(client, "/annonces/nouvelle"), "kind": "don", "category": "objet",
+        "title": "Chaise", "city": "Grenoble", "postal_code": "69001"}).get_data(as_text=True)
+    assert "n&#39;a pas le code postal" in page
+    # Trajet sans code postal d'arrivée : refusé.
+    page = client.post("/trajets/", data={
+        "_csrf": csrf(client, "/trajets/"), "from_city": "Lyon", "from_cp": "69001",
+        "to_city": "Grenoble", "to_cp": "", "frequence": "ponctuel", "date": "2099-01-01"},
+        follow_redirects=True).get_data(as_text=True)
+    assert "code postal à 5 chiffres" in page

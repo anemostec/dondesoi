@@ -1,4 +1,5 @@
-from flask import Blueprint, abort, current_app, g, render_template, send_from_directory
+from flask import (Blueprint, abort, current_app, g, jsonify, render_template, request,
+                   send_from_directory)
 
 from .db import get_db
 from .security import login_required
@@ -45,6 +46,18 @@ def photo(subdir, filename):
         abort(404)
     return send_from_directory(f"{current_app.config['UPLOAD_FOLDER']}/{subdir}", filename,
                                max_age=7 * 24 * 3600)
+
+
+@bp.route("/communes/<cp>")
+def communes(cp):
+    """Communes d'un code postal, pour aider à choisir la bonne ville dans les formulaires."""
+    from .geo import communes_du_cp
+    from .security import trop_de_demandes
+    if trop_de_demandes(f"communes:{request.remote_addr}", 300, 60):
+        abort(429)
+    liste = communes_du_cp(cp)
+    return jsonify({"communes": None if liste is None else
+                    [{"nom": c["nom"], "dep": c.get("dep", "")} for c in liste]})
 
 
 @bp.route("/charte")

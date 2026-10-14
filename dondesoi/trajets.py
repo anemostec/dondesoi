@@ -5,7 +5,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 
 from .calendrier import JOURS, SQL_A_VENIR, description, occurrences
 from .db import get_db
-from .geo import coords_or_none
+from .geo import VilleInvalide, verifier_ville
 from .security import login_required
 
 bp = Blueprint("trajets", __name__, url_prefix="/trajets")
@@ -18,6 +18,8 @@ def lire_formulaire(f):
     v = {
         "from_city": f.get("from_city", "").strip(),
         "to_city": f.get("to_city", "").strip(),
+        "from_cp": f.get("from_cp", "").strip(),
+        "to_cp": f.get("to_cp", "").strip(),
         "regulier": f.get("frequence") == "regulier",
         "date": f.get("date", ""),
         "date_fin": f.get("date_fin", "") or None,
@@ -45,17 +47,23 @@ def lire_formulaire(f):
     for h in (v["heure"], v["heure_retour"] if v["retour"] else ""):
         if h and not HEURE_RE.match(h):
             return v, "L'heure doit être au format hh:mm."
+    try:
+        v["depart"] = (*verifier_ville(v["from_city"], v["from_cp"]), v["from_cp"])
+        v["arrivee"] = (*verifier_ville(v["to_city"], v["to_cp"]), v["to_cp"])
+    except VilleInvalide as e:
+        return v, str(e)
     return v, None
 
 
 def enregistrer(db, v, depart, arrivee, heure):
-    (flat, flon), (tlat, tlon) = coords_or_none(depart), coords_or_none(arrivee)
+    """depart / arrivee : (nom officiel, lat, lon, code postal), vérifiés par verifier_ville."""
+    (dnom, dlat, dlon, dcp), (anom, alat, alon, acp) = depart, arrivee
     db.execute(
-        """INSERT INTO trajets (user_id, from_city, to_city, date, jours, heure, date_fin, note,
-                                from_lat, from_lon, to_lat, to_lon)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (g.user["id"], depart, arrivee, v["date"], v["jours"], heure, v["date_fin"], v["note"],
-         flat, flon, tlat, tlon),
+        """INSERT INTO trajets (user_id, from_city, to_city, from_cp, to_cp, date, jours, heure,
+                                date_fin, note, from_lat, from_lon, to_lat, to_lon)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (g.user["id"], dnom, anom, dcp, acp, v["date"], v["jours"], heure, v["date_fin"],
+         v["note"], dlat, dlon, alat, alon),
     )
 
 
@@ -69,9 +77,9 @@ def mes_trajets():
         if erreur:
             flash(erreur, "erreur")
         else:
-            enregistrer(db, v, v["from_city"], v["to_city"], v["heure"])
+            enregistrer(db, v, v["depart"], v["arrivee"], v["heure"])
             if v["retour"]:
-                enregistrer(db, v, v["to_city"], v["from_city"], v["heure_retour"])
+                enregistrer(db, v, v["arrivee"], v["depart"], v["heure_retour"])
             db.commit()
             flash("Trajet enregistré" + (" avec son retour" if v["retour"] else "")
                   + ". Merci : un don pourra peut-être voyager avec vous.")

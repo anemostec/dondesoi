@@ -11,6 +11,7 @@ géocodeur dans app.extensions["geocoder"].
 """
 import json
 import math
+import re
 import urllib.parse
 import urllib.request
 
@@ -113,3 +114,86 @@ def geocode(city, postal_code=""):
 def coords_or_none(city, postal_code=""):
     found = geocode(city, postal_code)
     return found if found else (None, None)
+
+
+# --- Vérifier une ville par son code postal ----------------------------------------
+
+CP_RE = re.compile(r"^\d{5}$")
+
+
+class VilleInvalide(ValueError):
+    pass
+
+
+def _api_communes_du_cp(cp):
+    base = current_app.config["GEO_API_URL"].rstrip("/")
+    query = {"codePostal": cp, "fields": "nom,centre,departement"}
+    req = urllib.request.Request(f"{base}/communes?{urllib.parse.urlencode(query)}",
+                                 headers={"User-Agent": "DonDeSoi (logiciel libre)"})
+    with urllib.request.urlopen(req, timeout=4) as resp:
+        communes = json.load(resp)
+    return [{"nom": c["nom"], "lon": c["centre"]["coordinates"][0],
+             "lat": c["centre"]["coordinates"][1],
+             "dep": (c.get("departement") or {}).get("nom", "")}
+            for c in communes if c.get("centre")]
+
+
+def communes_du_cp(cp):
+    """Communes portant ce code postal ([] si inconnu), ou None si le service est injoignable."""
+    if not CP_RE.match(cp or ""):
+        return []
+    db = get_db()
+    row = db.execute("SELECT communes FROM codes_postaux WHERE cp = ?", (cp,)).fetchone()
+    if row is not None:
+        return json.loads(row["communes"])
+    source = current_app.extensions.get("communes_cp")
+    try:
+        if source is not None:
+            communes = source(cp)
+        elif current_app.config.get("GEOCODER", "api") == "api":
+            communes = _api_communes_du_cp(cp)
+        else:
+            return None
+    except (OSError, ValueError, KeyError) as e:
+        current_app.logger.warning("Code postal %s non vérifiable : %s", cp, e)
+        return None
+    db.execute("INSERT OR REPLACE INTO codes_postaux (cp, communes) VALUES (?, ?)",
+               (cp, json.dumps(communes, ensure_ascii=False)))
+    db.commit()
+    return communes
+
+
+def verifier_ville(ville, cp):
+    """Vérifie que la ville porte ce code postal.
+
+    Retourne (nom officiel, lat, lon) ; lève VilleInvalide avec un message clair sinon.
+    Si le service est injoignable, la ville est acceptée telle quelle (lat, lon à None).
+    """
+    ville, cp = (ville or "").strip(), (cp or "").strip()
+    if not CP_RE.match(cp):
+        raise VilleInvalide("Merci d'indiquer un code postal à 5 chiffres.")
+    communes = communes_du_cp(cp)
+    if communes is None:
+        if not ville:
+            raise VilleInvalide("Merci d'indiquer la ville.")
+        return ville, None, None
+    if not communes:
+        raise VilleInvalide(f"Le code postal {cp} n'existe pas.")
+    if not ville and len(communes) == 1:
+        c = communes[0]
+    else:
+        voulu = normalize_city(ville)
+        c = next((c for c in communes if normalize_city(c["nom"]) == voulu), None)
+        if c is None:
+            noms = ", ".join(x["nom"] for x in communes)
+            if not ville:
+                raise VilleInvalide(f"Plusieurs communes ont le code postal {cp} : {noms}. "
+                                    "Merci de préciser laquelle.")
+            raise VilleInvalide(f"« {ville} » n'a pas le code postal {cp}. Communes avec ce code : "
+                                f"{noms}.")
+    # Garde les coordonnées en cache pour geocode(ville, cp).
+    db = get_db()
+    db.execute("INSERT OR REPLACE INTO lieux (cle, nom, lat, lon) VALUES (?, ?, ?, ?)",
+               (f"{normalize_city(c['nom'])}|{cp}", c["nom"], c["lat"], c["lon"]))
+    db.commit()
+    return c["nom"], c["lat"], c["lon"]

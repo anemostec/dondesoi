@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% set edition = annonce is not none %}
+{% from "_ville.html" import champ_ville %}
 {% block title %}{{ 'Modifier l\'annonce' if edition else ('Proposer un don' if kind == 'don' else 'Exprimer un besoin') }}{% endblock %}
 {% block content %}
 <h1>{% if edition %}Modifier l'annonce{% else %}{{ 'Je propose un don' if kind == 'don' else "J'exprime un besoin" }}{% endif %}</h1>
@@ -74,10 +75,8 @@
     <label for="description">Description</label>
     <textarea id="description" name="description">{{ form.description or '' }}</textarea>
   </div>
-  <div>
-    <label for="city">Ville <span class="hint">(par défaut : {{ g.user.city }})</span></label>
-    <input type="text" id="city" name="city" value="{{ form.city or '' }}" placeholder="{{ g.user.city }}">
-  </div>
+  {{ champ_ville('postal_code', 'city', form.postal_code or (g.user.postal_code if not form.city else ''),
+                 form.city or g.user.city, titre='Lieu') }}
   {% if kind == 'besoin' %}
   <label class="check">
     <input type="checkbox" name="essential" value="1" {{ 'checked' if form.essential and form.essential != '0' }}>

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Rejoindre Don de soi{% endblock %}
+{% from "_ville.html" import champ_ville %}
 {% block content %}
 <h1>Rejoindre Don de soi</h1>
 {% if invitation %}<div class="flash">{{ invitation.inviter_name }} vous invite à rejoindre la famille Don de soi.</div>{% endif %}
@@ -15,12 +16,7 @@
     <div><label for="email">E-mail</label>
       <input type="email" id="email" name="email" required value="{{ form.email or '' }}"></div>
   </div>
-  <div class="row">
-    <div><label for="city">Ville</label>
-      <input type="text" id="city" name="city" required value="{{ form.city or '' }}"></div>
-    <div><label for="postal_code">Code postal <span class="hint">(facultatif)</span></label>
-      <input type="text" id="postal_code" name="postal_code" value="{{ form.postal_code or '' }}"></div>
-  </div>
+  {{ champ_ville('postal_code', 'city', form.postal_code, form.city) }}
   <div><label for="password">Mot de passe <span class="hint">(8 caractères minimum)</span></label>
     <input type="password" id="password" name="password" required minlength="8"></div>
 

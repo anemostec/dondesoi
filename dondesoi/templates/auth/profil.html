@@ -1,19 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Mon profil{% endblock %}
+{% from "_ville.html" import champ_ville %}
 {% block content %}
 <h1>Mon profil</h1>
 <p class="muted">Ces informations sont visibles par les donateurs quand vous exprimez un besoin.
   Elles ne sont jamais montrées à quelqu'un à qui vous donnez.</p>
 <form class="stack" method="post">
   <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-  <div class="row">
-    <div><label for="display_name">Prénom ou pseudonyme</label>
-      <input type="text" id="display_name" name="display_name" required value="{{ g.user.display_name }}"></div>
-    <div><label for="city">Ville</label>
-      <input type="text" id="city" name="city" required value="{{ g.user.city }}"></div>
-  </div>
-  <div><label for="postal_code">Code postal</label>
-    <input type="text" id="postal_code" name="postal_code" value="{{ g.user.postal_code }}"></div>
+  <div><label for="display_name">Prénom ou pseudonyme</label>
+    <input type="text" id="display_name" name="display_name" required value="{{ g.user.display_name }}"></div>
+  {{ champ_ville('postal_code', 'city', g.user.postal_code, g.user.city) }}
   <div><label for="bio">Quelques mots sur moi</label>
     <textarea id="bio" name="bio">{{ g.user.bio }}</textarea></div>
   <div><label for="contact">Comment me contacter <span class="hint">(visible par les donateurs)</span></label>

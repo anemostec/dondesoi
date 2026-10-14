@@ -1,0 +1,18 @@
+{#- Code postal puis ville : le script communes.js propose les communes du code postal,
+    et le serveur vérifie la paire (geo.verifier_ville). -#}
+{% macro champ_ville(cp_name, ville_name, cp_value='', ville_value='', titre='', requis=True, id='') %}
+{% set id = id or ville_name %}
+<div class="cp-ville" data-cp-ville>
+  {% if titre %}<span class="label-like">{{ titre }}</span>{% endif %}
+  <div class="cp-ville-champs">
+    <div class="cp-champ"><label for="{{ id }}_cp">Code postal</label>
+      <input type="text" id="{{ id }}_cp" name="{{ cp_name }}" value="{{ cp_value or '' }}" data-cp
+             inputmode="numeric" pattern="[0-9]{5}" maxlength="5" autocomplete="postal-code"
+             {{ 'required' if requis }}></div>
+    <div><label for="{{ id }}">Ville</label>
+      <input type="text" id="{{ id }}" name="{{ ville_name }}" value="{{ ville_value or '' }}" data-ville
+             autocomplete="off" {{ 'required' if requis }}></div>
+  </div>
+  <p class="hint" data-cp-aide aria-live="polite"></p>
+</div>
+{% endmacro %}

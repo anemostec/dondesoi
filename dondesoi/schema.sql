@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS codes_postaux;
 DROP TABLE IF EXISTS invitations_refusees;
 DROP TABLE IF EXISTS invitations;
 DROP TABLE IF EXISTS limites;
@@ -45,6 +46,7 @@ CREATE TABLE annonces (
     title TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
     city TEXT NOT NULL,
+    postal_code TEXT NOT NULL DEFAULT '',
     essential INTEGER NOT NULL DEFAULT 0,
     lat REAL,
     lon REAL,
@@ -70,6 +72,8 @@ CREATE TABLE trajets (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     from_city TEXT NOT NULL,
     to_city TEXT NOT NULL,
+    from_cp TEXT NOT NULL DEFAULT '',
+    to_cp TEXT NOT NULL DEFAULT '',
     -- Trajet ponctuel : date du trajet. Trajet régulier : date de début.
     date TEXT NOT NULL,
     -- Trajet régulier : jours de la semaine (0 = lundi … 6 = dimanche), ex. « 0,3 ».
@@ -213,9 +217,16 @@ CREATE TABLE invitations_refusees (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Communes de chaque code postal (geo.api.gouv.fr), pour vérifier une ville.
+CREATE TABLE codes_postaux (
+    cp TEXT PRIMARY KEY,
+    communes TEXT NOT NULL,          -- JSON : [{"nom", "lat", "lon", "dep"}]
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX idx_messages_don ON messages (don_id);
 CREATE INDEX idx_notifications_user ON notifications (user_id, read_at);
 CREATE INDEX idx_annonces_open ON annonces (kind, status);
 CREATE INDEX idx_trajets_date ON trajets (date);
 
-PRAGMA user_version = 7;
+PRAGMA user_version = 8;

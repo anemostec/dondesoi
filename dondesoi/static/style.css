@@ -220,3 +220,8 @@ input[type=file] { font: inherit; max-width: 100%; }
 
 input[type=time] { width: 100%; padding: .55rem .7rem; font: inherit; color: var(--text);
   background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+
+/* Code postal + ville */
+.cp-ville-champs { display: grid; grid-template-columns: 8rem 1fr; gap: .7rem; }
+.cp-ville .hint:empty { display: none; }
+.cp-ville input:invalid:not(:placeholder-shown):not(:focus) { border-color: var(--danger); }

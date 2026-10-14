@@ -10,6 +10,8 @@ MEMBRES = [
     ("paul@exemple.org", "Paul", "Lyon", "Étudiant, je fais souvent Lyon-Grenoble."),
 ]
 
+CODES_POSTAUX = {"Lyon": "69001", "Villeurbanne": "69100", "Grenoble": "38000"}
+
 ANNONCES = [
     # (membre, kind, category, title, description, essential)
     (0, "don", "nourriture", "Repas maison chaque dimanche",
@@ -44,22 +46,26 @@ def seed(db):
     ids = []
     for email, name, city, bio in MEMBRES:
         cur = db.execute(
-            """INSERT INTO users (email, password_hash, display_name, city, bio, contact,
-                                  charter_accepted_at)
-               VALUES (?, ?, ?, ?, ?, ?, datetime('now'))""",
-            (email, generate_password_hash("demo1234"), name, city, bio, email),
+            """INSERT INTO users (email, password_hash, display_name, city, postal_code, bio,
+                                  contact, charter_accepted_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now'))""",
+            (email, generate_password_hash("demo1234"), name, city, CODES_POSTAUX[city], bio,
+             email),
         )
         ids.append(cur.lastrowid)
     for membre, kind, cat, title, desc, essential in ANNONCES:
         db.execute(
-            """INSERT INTO annonces (user_id, kind, category, title, description, city, essential)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (ids[membre], kind, cat, title, desc, MEMBRES[membre][2], essential),
+            """INSERT INTO annonces (user_id, kind, category, title, description, city,
+                                    postal_code, essential)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (ids[membre], kind, cat, title, desc, MEMBRES[membre][2],
+             CODES_POSTAUX[MEMBRES[membre][2]], essential),
         )
     # Joseph et Paul portent dans la prière le colis alimentaire d'Anne.
     db.executemany("INSERT INTO prieres (annonce_id, user_id) VALUES (8, ?)", [(ids[1],), (ids[3],)])
     db.execute(
-        "INSERT INTO trajets (user_id, from_city, to_city, date, note) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO trajets (user_id, from_city, to_city, from_cp, to_cp, date, note) "
+        "VALUES (?, ?, ?, '69100', '38000', ?, ?)",
         (ids[3], "Villeurbanne", "Grenoble", (date.today() + timedelta(days=5)).isoformat(),
          "Place dans le coffre."),
     )

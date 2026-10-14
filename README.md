@@ -13,6 +13,7 @@ L'esprit du projet est décrit dans `../don_de_soi.tex` et sur la page « Charte
 | Chacun est donneur ET receveur | Le tableau de bord invite à publier un don si l'on n'a que des besoins, et inversement ; engagement à l'inscription |
 | Don entièrement gratuit, sans argent entre membres | Pas de catégorie « argent » ; les annonces mentionnant somme, virement, PayPal… sont refusées (`annonces.py`) |
 | Besoins de première nécessité prioritaires | Catégories essentielles + case « première nécessité » ; toujours en tête des listes et des suggestions (`matching.py`) |
+| Villes sans ambiguïté | Code postal obligatoire (inscription, profil, annonce ailleurs que chez soi, trajets) ; les communes du code postal sont proposées pendant la saisie (`static/communes.js`, `/communes/<cp>`) et la paire est vérifiée côté serveur (`geo.verifier_ville`) : il y a plusieurs Chenereilles en France |
 | L'IA met en relation donneurs et receveurs | `matching.py` : score explicable affiché au donateur. Pertinence = même catégorie + mots communs + **sens proche** (modèle open source MiniLM multilingue exécuté sur le serveur, `sens.py`) ; puis **distance réelle** pour départager (`geo.py`), sauf prière, écoute et savoir qui se donnent à distance. Un besoin sans pertinence n'est jamais proposé, même tout proche |
 | Le donateur est seul décisionnaire | Les suggestions ne font que proposer ; les membres peuvent signaler leur intérêt, le donateur choisit |
 | Le donateur voit le profil et les avis du receveur | Page « Donner à… » (`dons/preparer.html`) |

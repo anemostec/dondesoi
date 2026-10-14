@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Mes trajets{% endblock %}
+{% from "_ville.html" import champ_ville %}
 {% block content %}
 <h1>Mes trajets</h1>
 {{ verset('samaritain') }}
@@ -36,10 +37,9 @@
   <form class="stack panel trajet-form" method="post">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <h3 style="margin-top:0">Ajouter un trajet</h3>
-    <div><label for="from_city">Départ</label>
-      <input type="text" id="from_city" name="from_city" value="{{ form.from_city or g.user.city }}" required></div>
-    <div><label for="to_city">Arrivée</label>
-      <input type="text" id="to_city" name="to_city" value="{{ form.to_city or '' }}" required></div>
+    {{ champ_ville('from_cp', 'from_city', form.from_cp or (g.user.postal_code if not form.from_city else ''),
+                   form.from_city or g.user.city, titre='Départ') }}
+    {{ champ_ville('to_cp', 'to_city', form.to_cp, form.to_city, titre='Arrivée') }}
 
     <fieldset class="frequence">
       <legend class="sr-only">Fréquence</legend>

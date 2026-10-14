@@ -6,7 +6,7 @@ from itsdangerous import BadSignature, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .db import get_db
-from .geo import coords_or_none
+from .geo import VilleInvalide, verifier_ville
 from .notifications import prochain_verset, rendre_email, send_email
 from .photos import COVER_SQL
 from .security import login_required, trop_de_demandes
@@ -36,15 +36,19 @@ def inscription():
             error = "Adresse e-mail invalide."
         elif len(password) < 8:
             error = "Le mot de passe doit contenir au moins 8 caractères."
-        elif not display_name or not city:
-            error = "Le prénom (ou pseudonyme) et la ville sont nécessaires."
+        elif not display_name:
+            error = "Merci d'indiquer votre prénom ou un pseudonyme."
         elif not all(form.get(f"engagement_{key}") for key, _ in ENGAGEMENTS):
             error = "Merci de prendre chacun des engagements pour rejoindre Don de soi."
+        postal_code = form.get("postal_code", "").strip()
+        if error is None:
+            try:
+                city, lat, lon = verifier_ville(city, postal_code)
+            except VilleInvalide as e:
+                error = str(e)
 
         if error is None:
             db = get_db()
-            postal_code = form.get("postal_code", "").strip()
-            lat, lon = coords_or_none(city, postal_code)
             try:
                 cur = db.execute(
                     """INSERT INTO users (email, password_hash, display_name, city, postal_code,
@@ -187,12 +191,15 @@ def profil():
     if request.method == "POST":
         f = request.form
         display_name, city = f.get("display_name", "").strip(), f.get("city", "").strip()
-        if not display_name or not city:
-            flash("Le prénom (ou pseudonyme) et la ville sont nécessaires.", "erreur")
+        postal_code = f.get("postal_code", "").strip()
+        try:
+            if not display_name:
+                raise VilleInvalide("Merci d'indiquer votre prénom ou un pseudonyme.")
+            city, lat, lon = verifier_ville(city, postal_code)
+        except VilleInvalide as e:
+            flash(str(e), "erreur")
         else:
             db = get_db()
-            postal_code = f.get("postal_code", "").strip()
-            lat, lon = coords_or_none(city, postal_code)
             db.execute(
                 """UPDATE users SET display_name = ?, city = ?, postal_code = ?, bio = ?, contact = ?,
                                     email_notifications = ?, lat = ?, lon = ?

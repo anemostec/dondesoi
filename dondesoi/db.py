@@ -151,6 +151,18 @@ MIGRATIONS = [
     ALTER TABLE trajets ADD COLUMN date_fin TEXT;
     ALTER TABLE dons ADD COLUMN transport_date TEXT;
     """,
+    # Villes vérifiées par leur code postal.
+    """
+    ALTER TABLE annonces ADD COLUMN postal_code TEXT NOT NULL DEFAULT '';
+    ALTER TABLE trajets ADD COLUMN from_cp TEXT NOT NULL DEFAULT '';
+    ALTER TABLE trajets ADD COLUMN to_cp TEXT NOT NULL DEFAULT '';
+    -- Communes de chaque code postal (geo.api.gouv.fr), pour vérifier une ville.
+    CREATE TABLE codes_postaux (
+        cp TEXT PRIMARY KEY,
+        communes TEXT NOT NULL,          -- JSON : [{"nom", "lat", "lon", "dep"}]
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    """,
 ]
 
 

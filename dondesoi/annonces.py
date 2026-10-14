@@ -4,7 +4,7 @@ from flask import Blueprint, abort, flash, g, redirect, render_template, request
 
 from . import CATEGORY_LABELS, ESSENTIAL_CATEGORIES
 from .db import get_db
-from .geo import coords_or_none, distance_rows
+from .geo import VilleInvalide, coords_or_none, distance_rows, verifier_ville
 from .matching import candidats_pour_offre, is_essential, offres_pour_besoin
 from .notifications import notify
 from .photos import (COVER_SQL, MAX_PHOTOS_PAR_ANNONCE, PhotoInvalide, delete_photo,
@@ -63,11 +63,18 @@ def validate_form(form):
     return None
 
 
-def annonce_coords(city):
-    """Coordonnées de la ville de l'annonce (celles du membre si c'est sa ville)."""
-    if normalize_city(city) == normalize_city(g.user["city"]) and g.user["lat"] is not None:
-        return g.user["lat"], g.user["lon"]
-    return coords_or_none(city)
+def annonce_lieu(form):
+    """(ville, code postal, lat, lon) de l'annonce : ceux du membre par défaut, sinon la ville
+    saisie, vérifiée par son code postal. Lève VilleInvalide."""
+    city, cp = form.get("city", "").strip(), form.get("postal_code", "").strip()
+    u = g.user
+    if not city and not cp or (normalize_city(city) == normalize_city(u["city"])
+                               and cp in ("", u["postal_code"])):
+        if u["lat"] is None:
+            return (u["city"], u["postal_code"], *coords_or_none(u["city"], u["postal_code"]))
+        return u["city"], u["postal_code"], u["lat"], u["lon"]
+    nom, lat, lon = verifier_ville(city, cp)
+    return nom, cp, lat, lon
 
 
 # Rayons proposés dans la liste des annonces, en km.
@@ -132,20 +139,23 @@ def nouvelle():
         filenames = []
         if error is None:
             try:
+                city, cp, lat, lon = annonce_lieu(form)
+            except VilleInvalide as e:
+                error = str(e)
+        if error is None:
+            try:
                 filenames = save_photos(request.files.getlist("photos"))
             except PhotoInvalide as e:
                 error = str(e)
 
         if error is None:
             db = get_db()
-            city = form.get("city", "").strip() or g.user["city"]
-            lat, lon = annonce_coords(city)
             cur = db.execute(
                 """INSERT INTO annonces (user_id, kind, category, title, description, city,
-                                         essential, lat, lon)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                         postal_code, essential, lat, lon)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (g.user["id"], kind, form["category"], form["title"].strip(),
-                 form.get("description", "").strip(), city, essential_from_form(kind, form),
+                 form.get("description", "").strip(), city, cp, essential_from_form(kind, form),
                  lat, lon),
             )
             add_photos(db, cur.lastrowid, filenames)
@@ -178,6 +188,11 @@ def modifier(annonce_id):
         filenames = []
         if error is None:
             try:
+                city, cp, lat, lon = annonce_lieu(form)
+            except VilleInvalide as e:
+                error = str(e)
+        if error is None:
+            try:
                 filenames = save_photos(request.files.getlist("photos"),
                                         limit=MAX_PHOTOS_PAR_ANNONCE - remaining)
             except PhotoInvalide as e:
@@ -185,13 +200,11 @@ def modifier(annonce_id):
                     f"{e} Cette annonce a déjà {remaining} photo(s) sur {MAX_PHOTOS_PAR_ANNONCE}.")
         if error is None:
             db = get_db()
-            city = form.get("city", "").strip() or g.user["city"]
-            lat, lon = annonce_coords(city)
             db.execute(
                 """UPDATE annonces SET title = ?, description = ?, category = ?, city = ?,
-                                       essential = ?, lat = ?, lon = ? WHERE id = ?""",
+                                       postal_code = ?, essential = ?, lat = ?, lon = ? WHERE id = ?""",
                 (form["title"].strip(), form.get("description", "").strip(), form["category"],
-                 city, essential_from_form(annonce["kind"], form), lat, lon, annonce_id),
+                 city, cp, essential_from_form(annonce["kind"], form), lat, lon, annonce_id),
             )
             oublier(db, annonce_id)   # le texte a pu changer : le sens sera recalculé
             for p in photos:
