@@ -33,6 +33,18 @@
       <p style="margin:0 0 14px 0;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#2b2520;">{{ p }}</p>
       {%- endfor %}
 
+      {%- for groupe in liste %}
+      <p style="margin:14px 0 6px 0;font-family:Georgia,serif;font-size:17px;font-weight:bold;color:#2b2520;">{{ groupe.titre }}</p>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 10px 0;">
+        {%- for item in groupe.elements %}
+        <tr><td style="padding:7px 0;border-top:1px solid #e4d9c8;font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;">
+          <a href="{{ item.url }}" style="color:#a4472d;text-decoration:none;">{{ item.texte }}</a>
+          {%- if item.detail %}<br><span style="font-size:13px;color:#6e6359;">{{ item.detail }}</span>{% endif %}
+        </td></tr>
+        {%- endfor %}
+      </table>
+      {%- endfor %}
+
       {%- if citation %}
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:6px 0 18px 0;">
         <tr><td style="background:#f3ece0;border-radius:8px;padding:14px 16px;">

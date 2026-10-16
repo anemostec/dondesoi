@@ -240,3 +240,12 @@ details.signaler > summary::-webkit-details-marker { display: none; }
 details.signaler form { margin-top: .5rem; max-width: 420px; }
 .contenu-signale { white-space: pre-line; background: var(--surface-2); border-left: 3px solid var(--border);
   margin: .6rem 0; padding: .6rem .9rem; border-radius: 6px; }
+
+/* Bilan */
+.table-scroll { overflow-x: auto; }
+table.bilan { border-collapse: collapse; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); min-width: 320px; }
+table.bilan th, table.bilan td { padding: .5rem .8rem; border-bottom: 1px solid var(--border); text-align: right; }
+table.bilan th[scope=row] { text-align: left; font-weight: 400; }
+table.bilan thead th { font-family: var(--serif); }
+.frequence-email { border: 0; padding: 0; margin: 0; display: grid; gap: .3rem; }

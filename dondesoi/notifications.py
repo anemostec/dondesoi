@@ -39,9 +39,10 @@ def notify(user_id, body, link):
     db.commit()
     if already_pending:
         return
-    user = db.execute("SELECT email, display_name, email_notifications FROM users WHERE id = ?",
+    user = db.execute("SELECT email, display_name, email_frequence FROM users WHERE id = ?",
                       (user_id,)).fetchone()
-    if user is not None and user["email_notifications"]:
+    # 'hebdo' : la notification attendra le récapitulatif du dimanche (recap.py).
+    if user is not None and user["email_frequence"] == "immediat":
         url = request.host_url.rstrip("/") + link
         text = (f"Bonjour {user['display_name']},\n\n{body}\n\n{url}\n\n"
                 "Que la paix soit avec vous,\nDon de soi\n\n"
@@ -69,13 +70,14 @@ def prochain_verset(user_id):
 
 
 def rendre_email(titre, paragraphes=(), bouton_texte=None, bouton_url=None, citation=None,
-                 citation_auteur=None, notes=(), verset="gratuitement", apercu=None, pied=()):
+                 citation_auteur=None, notes=(), verset="gratuitement", apercu=None, pied=(),
+                 liste=()):
     """Version HTML d'un e-mail, aux couleurs du site (à appeler pendant une requête)."""
     from .evangile import passage
     return render_template(
         "email/message.html", titre=titre, paragraphes=paragraphes, bouton_texte=bouton_texte,
         bouton_url=bouton_url, citation=citation, citation_auteur=citation_auteur, notes=notes,
-        verset=passage(verset) if verset else None, apercu=apercu, pied=pied,
+        verset=passage(verset) if verset else None, apercu=apercu, pied=pied, liste=liste,
         site_url=url_for("main.accueil", _external=True),
         logo_url=url_for("static", filename="email/croix.png", _external=True),
     )

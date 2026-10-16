@@ -1110,3 +1110,42 @@ def test_lieux_relais(app):
     don_url = anne.post("/dons/preparer", data={"_csrf": csrf(anne, "/tableau-de-bord"),
                         "offre": offre, "receveur": 2, "shared_info": ""}).headers["Location"]
     assert "Lieux relais proches" in paul.get(don_url).get_data(as_text=True)
+
+
+# --- Récapitulatif, sauvegarde, bilan ---------------------------------------------------
+
+def test_recapitulatif_hebdomadaire(app):
+    anne, paul = app.test_client(), app.test_client()
+    register(anne, "a@ex.fr", "Anne", "Lyon")
+    register(paul, "p@ex.fr", "Paul", "Villeurbanne")
+    anne.post("/profil", data={"_csrf": csrf(anne, "/profil"), "display_name": "Anne", "city": "Lyon",
+                               "postal_code": "69001", "email_frequence": "hebdo"})
+    post_annonce(paul, "besoin", "nourriture", "Colis alimentaire")
+    with app.test_request_context():
+        from dondesoi.notifications import notify
+        notify(1, "Un membre prie pour vous.", "/annonces/1")
+    assert not [m for m in app.extensions.get("outbox", []) if m["to"] == "a@ex.fr"]   # pas tout de suite
+    result = app.test_cli_runner().invoke(args=["recap-hebdo"])
+    assert "1 récapitulatif" in result.output
+    mail = [m for m in app.extensions["outbox"] if m["to"] == "a@ex.fr"][-1]
+    assert "Colis alimentaire" in mail["html"] and "Un membre prie pour vous." in mail["html"]
+    # La semaine suivante, rien de nouveau : pas d'e-mail.
+    assert "0 récapitulatif" in app.test_cli_runner().invoke(args=["recap-hebdo"]).output
+
+
+def test_sauvegarde(app, tmp_path):
+    from dondesoi.taches import sauvegarder
+    with app.app_context():
+        chemin = sauvegarder(dossier=str(tmp_path / "s"), garder=2)
+        assert sqlite3.connect(chemin).execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+        for jour in ("2026-01-01", "2026-01-02", "2026-01-03"):
+            (tmp_path / "s" / f"dondesoi-{jour}.sqlite").write_bytes(b"")
+        sauvegarder(dossier=str(tmp_path / "s"), garder=2)
+    assert len(list((tmp_path / "s").iterdir())) == 2
+
+
+def test_bilan_public(app):
+    client = app.test_client()
+    register(client, "a@ex.fr", "Anne", "Lyon")
+    page = app.test_client().get("/bilan").get_data(as_text=True)    # visible sans être connecté
+    assert "Membres inscrits" in page and "Anne" not in page

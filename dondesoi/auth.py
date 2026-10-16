@@ -185,6 +185,13 @@ def deconnexion():
     return redirect(url_for("main.accueil"))
 
 
+def frequence_email(f):
+    """'immediat', 'hebdo' ou 'aucun' (accepte aussi l'ancienne case à cocher)."""
+    if f.get("email_frequence") in ("immediat", "hebdo", "aucun"):
+        return f["email_frequence"]
+    return "immediat" if f.get("email_notifications") else "aucun"
+
+
 @bp.route("/profil", methods=("GET", "POST"))
 @login_required
 def profil():
@@ -202,10 +209,10 @@ def profil():
             db = get_db()
             db.execute(
                 """UPDATE users SET display_name = ?, city = ?, postal_code = ?, bio = ?, contact = ?,
-                                    email_notifications = ?, lat = ?, lon = ?
+                                    email_frequence = ?, lat = ?, lon = ?
                    WHERE id = ?""",
                 (display_name, city, postal_code, f.get("bio", "").strip(),
-                 f.get("contact", "").strip(), int(bool(f.get("email_notifications"))),
+                 f.get("contact", "").strip(), frequence_email(f),
                  lat, lon, g.user["id"]),
             )
             db.commit()

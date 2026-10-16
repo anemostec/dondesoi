@@ -14,11 +14,14 @@
     <textarea id="bio" name="bio">{{ g.user.bio }}</textarea></div>
   <div><label for="contact">Comment me contacter <span class="hint">(visible par les donateurs)</span></label>
     <input type="text" id="contact" name="contact" value="{{ g.user.contact }}"></div>
-  <label class="check">
-    <input type="checkbox" name="email_notifications" value="1" {{ 'checked' if g.user.email_notifications }}>
-    <span>Me prévenir aussi par e-mail <span class="hint">(nouveau receveur ou don qui me correspond,
-      message, demande de transport…)</span></span>
-  </label>
+  <fieldset class="frequence-email">
+    <legend><strong>E-mails de Don de soi</strong> <span class="hint">(dons qui me correspondent,
+      messages, demandes de transport…)</span></legend>
+    {% for valeur, libelle in [('immediat', "À chaque nouvelle"), ('hebdo', "Un récapitulatif par semaine, le dimanche"), ('aucun', "Aucun e-mail (les notifications restent sur le site)")] %}
+    <label class="check"><input type="radio" name="email_frequence" value="{{ valeur }}"
+      {{ 'checked' if g.user.email_frequence == valeur }}> {{ libelle }}</label>
+    {% endfor %}
+  </fieldset>
   <div><button class="btn">Enregistrer</button></div>
 </form>
 <p class="muted small" style="margin-top:2rem">Vous êtes libre de partir à tout moment :

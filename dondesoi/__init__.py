@@ -65,6 +65,8 @@ def create_app(test_config=None):
         CONTACT_EMAIL="",
         # Éditeur du site pour les mentions légales (l'association, une fois déclarée).
         EDITEUR="",
+        # Adresse publique du site, pour les liens des e-mails envoyés par les tâches régulières.
+        SITE_URL="http://localhost:5000",
         # En production derrière un proxy HTTPS (Caddy) : DONDESOI_BEHIND_PROXY=true.
         BEHIND_PROXY=False,
         # Distance réelle : coordonnées des villes via geo.api.gouv.fr (« none » pour désactiver).
@@ -90,8 +92,9 @@ def create_app(test_config=None):
         app.config["SECRET_KEY"] = _secret_key(app.instance_path)
     os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
-    from . import db, notifications, security
+    from . import db, notifications, security, taches
     db.init_app(app)
+    taches.init_app(app)
     security.init_app(app)
     notifications.init_app(app)
 

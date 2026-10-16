@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Bilan{% endblock %}
+{% block content %}
+<div class="prose">
+<h1>Bilan de Don de soi</h1>
+{{ verset('lumiere') }}
+<p class="muted">Ce bilan est public et le même pour tous : il ne contient aucun nom. Il dit ce que
+  les membres ont vécu ensemble, pour en rendre grâce. Les comptes de l'association y figureront
+  dès qu'elle sera créée.</p>
+</div>
+{% if annees %}
+<div class="table-scroll">
+<table class="bilan">
+  <thead><tr><th></th>{% for a in annees %}<th>{{ a }}</th>{% endfor %}</tr></thead>
+  <tbody>
+    {% for libelle, valeurs in series.items() %}
+    <tr><th scope="row">{{ libelle }}</th>{% for a in annees %}<td>{{ valeurs.get(a, 0) }}</td>{% endfor %}</tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="muted">Rien encore : le bilan se remplira au fil des dons.</p>
+{% endif %}
+{% endblock %}

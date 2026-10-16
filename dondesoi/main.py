@@ -85,6 +85,34 @@ def partenaires():
     return render_template("pages/partenaires.html")
 
 
+@bp.route("/bilan")
+def bilan():
+    """Bilan public, année par année, le même pour tous : aucun nom, aucun accès réservé."""
+    db = get_db()
+    q = lambda sql: {r[0]: r[1] for r in db.execute(sql)}
+    series = {
+        "Membres inscrits": q("SELECT strftime('%Y', created_at), COUNT(*) FROM users GROUP BY 1"),
+        "Dons proposés": q("SELECT strftime('%Y', created_at), COUNT(*) FROM annonces "
+                           "WHERE kind = 'don' GROUP BY 1"),
+        "Besoins exprimés": q("SELECT strftime('%Y', created_at), COUNT(*) FROM annonces "
+                              "WHERE kind = 'besoin' GROUP BY 1"),
+        "Dons réalisés": q("SELECT strftime('%Y', completed_at), COUNT(*) FROM dons "
+                           "WHERE status = 'realise' GROUP BY 1"),
+        "Dont prêts rendus": q("SELECT strftime('%Y', rendu_at), COUNT(*) FROM dons "
+                               "WHERE rendu_at IS NOT NULL GROUP BY 1"),
+        "Intentions portées dans la prière": q("SELECT strftime('%Y', created_at), COUNT(*) "
+                                               "FROM prieres GROUP BY 1"),
+        "Coups de main à plusieurs": q("SELECT strftime('%Y', created_at), COUNT(*) "
+                                       "FROM participations GROUP BY 1"),
+        "Trajets proposés": q("SELECT strftime('%Y', created_at), COUNT(*) FROM trajets GROUP BY 1"),
+        "Actions de grâce": q("SELECT strftime('%Y', created_at), COUNT(*) FROM actions_grace GROUP BY 1"),
+        "Signalements examinés": q("SELECT strftime('%Y', created_at), COUNT(*) FROM signalements "
+                                   "WHERE statut != 'ouvert' GROUP BY 1"),
+    }
+    annees = sorted({a for s in series.values() for a in s if a}, reverse=True)
+    return render_template("pages/bilan.html", series=series, annees=annees)
+
+
 @bp.route("/mentions-legales")
 def mentions_legales():
     return render_template("pages/mentions_legales.html")
