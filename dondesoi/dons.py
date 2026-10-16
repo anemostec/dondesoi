@@ -30,7 +30,8 @@ bp = Blueprint("dons", __name__, url_prefix="/dons")
 def get_don(don_id):
     db = get_db()
     don = db.execute(
-        f"""SELECT d.*, a.title, a.description, a.category, a.city AS offre_city, {COVER_SQL}
+        f"""SELECT d.*, a.title, a.description, a.category, a.city AS offre_city, a.pret,
+                   a.pret_duree, {COVER_SQL}
             FROM dons d JOIN annonces a ON a.id = d.offre_id WHERE d.id = ?""",
         (don_id,),
     ).fetchone()
@@ -177,6 +178,23 @@ def statut(don_id):
     else:
         abort(400)
     db.commit()
+    return redirect(url_for("dons.detail", don_id=don_id))
+
+
+@bp.route("/<int:don_id>/rendu", methods=("POST",))
+@login_required
+def rendu(don_id):
+    """Prêt : le donateur indique que l'objet lui a été rendu ; il est de nouveau proposé."""
+    don = get_don(don_id)
+    if g.user["id"] != don["donor_id"] or not don["pret"] or don["status"] != "realise" or don["rendu_at"]:
+        abort(400)
+    db = get_db()
+    db.execute("UPDATE dons SET rendu_at = datetime('now') WHERE id = ?", (don_id,))
+    db.execute("UPDATE annonces SET status = 'ouverte' WHERE id = ?", (don["offre_id"],))
+    db.commit()
+    notify(don["receiver_id"], f"Merci d'avoir rendu « {don['title']} ».",
+           url_for("dons.detail", don_id=don_id))
+    flash("Merci. Votre objet est de nouveau proposé au prêt.")
     return redirect(url_for("dons.detail", don_id=don_id))
 
 

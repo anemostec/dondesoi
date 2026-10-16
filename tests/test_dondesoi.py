@@ -1040,3 +1040,44 @@ def test_signalement_sans_jures_masque_par_precaution(app):
     paul.post("/signaler", data={"_csrf": csrf(paul, f"/annonces/{annonce}"), "kind": "annonce",
               "objet_id": annonce, "motif": "charte"})
     assert paul.get(f"/annonces/{annonce}").status_code == 404
+
+
+# --- Prêt, coup de main à plusieurs, publication pour un proche -------------------------
+
+def test_pret_d_objet(app):
+    donor, receiver = app.test_client(), app.test_client()
+    register(donor, "d@ex.fr", "Joseph", "Lyon")
+    register(receiver, "r@ex.fr", "Anne", "Lyon")
+    resp = donor.post("/annonces/nouvelle", data={
+        "_csrf": csrf(donor, "/annonces/nouvelle"), "kind": "don", "category": "objet",
+        "title": "Perceuse", "pret": "1", "pret_duree": "un week-end"})
+    offre = int(resp.headers["Location"].rsplit("/", 1)[-1])
+    assert "Perceuse" in receiver.get("/annonces/?type=pret").get_data(as_text=True)
+    assert "après un week-end" in receiver.get(f"/annonces/{offre}").get_data(as_text=True)
+    don_url = donor.post("/dons/preparer", data={"_csrf": csrf(donor, "/tableau-de-bord"),
+                         "offre": offre, "receveur": 2, "shared_info": ""}).headers["Location"]
+    donor.post(don_url + "/statut", data={"_csrf": csrf(donor, don_url), "action": "realise"})
+    donor.post(don_url + "/rendu", data={"_csrf": csrf(donor, don_url)})
+    with app.app_context():
+        db = get_db()
+        assert db.execute("SELECT rendu_at FROM dons").fetchone()[0] is not None
+        assert db.execute("SELECT status FROM annonces WHERE id = ?", (offre,)).fetchone()[0] == "ouverte"
+
+
+def test_coup_de_main_et_proche(app):
+    marie, paul, luc = app.test_client(), app.test_client(), app.test_client()
+    register(marie, "m@ex.fr", "Marie", "Lyon")
+    register(paul, "p@ex.fr", "Paul", "Lyon")
+    register(luc, "l@ex.fr", "Luc", "Lyon")
+    resp = marie.post("/annonces/nouvelle", data={
+        "_csrf": csrf(marie, "/annonces/nouvelle"), "kind": "besoin", "category": "service",
+        "title": "Déménagement de Mme Rose", "mains": "3", "pour_proche": "Mme Rose"})
+    besoin = int(resp.headers["Location"].rsplit("/", 1)[-1])
+    url = f"/annonces/{besoin}"
+    assert "Publié pour" in paul.get(url).get_data(as_text=True)
+    paul.post(url + "/participer", data={"_csrf": csrf(paul, url), "message": "Paul, samedi matin"})
+    luc.post(url + "/participer", data={"_csrf": csrf(luc, url), "message": ""})
+    assert any("vient vous aider" in b for b in unread(app, 1))
+    page = marie.get(url).get_data(as_text=True)
+    assert "2 personnes sur" in page and "Paul, samedi matin" in page
+    assert "2/3 personnes" in luc.get("/annonces/").get_data(as_text=True)

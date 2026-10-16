@@ -11,6 +11,18 @@
 <div>
   {% if don.cover %}<img class="don-cover" src="{{ url_for('main.photo', subdir='annonces', filename=don.cover|thumb) }}" alt="">{% endif %}
   {% if don.description %}<p style="white-space:pre-line">{{ don.description }}</p>{% endif %}
+  {% if don.pret %}
+  <div class="panel panel-soft small">
+    <strong>C'est un prêt</strong>{% if don.pret_duree %} ({{ don.pret_duree }}){% endif %} : l'objet sera rendu.
+    {% if don.rendu_at %}Rendu le {{ don.rendu_at|heure }}.
+    {% elif is_donor and don.status == 'realise' %}
+    <form method="post" action="{{ url_for('dons.rendu', don_id=don.id) }}" style="margin-top:.4rem">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn btn-small">L'objet m'a été rendu</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
 
   <div class="panel panel-soft">
     {% if is_donor %}

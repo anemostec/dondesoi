@@ -8,6 +8,8 @@
       <span class="tag tag-essential">Première nécessité</span>
     {% endif %}
     <span class="tag">{{ CATEGORY_LABELS.get(a.category, a.category) }}</span>
+    {% if a.pret %}<span class="tag tag-don">Prêt</span>{% endif %}
+    {% if a.mains %}<span class="tag">{{ a.nb_mains or 0 }}/{{ a.mains }} personnes</span>{% endif %}
   </div>
   <h3><a href="{{ url_for('annonces.detail', annonce_id=a.id) }}">{{ a.title }}</a></h3>
   {% if a.description %}<p class="muted small">{{ a.description|truncate(140) }}</p>{% endif %}

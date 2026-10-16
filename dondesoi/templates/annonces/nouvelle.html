@@ -83,6 +83,20 @@
     <span>C'est un besoin de première nécessité (se nourrir, se loger, se vêtir, se soigner, ne plus
       être seul…). <span class="hint">Il sera présenté en priorité aux donateurs.</span></span>
   </label>
+  <div><label for="mains">Faut-il plusieurs personnes ? <span class="hint">(déménagement, repas pour une
+    famille… laissez 0 sinon)</span></label>
+    <input type="number" id="mains" name="mains" min="0" max="50" value="{{ form.mains or 0 }}" style="max-width:8rem"></div>
+  <div><label for="pour_proche">Je publie pour une personne sans internet
+    <span class="hint">(son prénom ; c'est vous qui ferez le lien)</span></label>
+    <input type="text" id="pour_proche" name="pour_proche" maxlength="60" value="{{ form.pour_proche or '' }}"
+           placeholder="Ex. : Mme Rose, ma voisine"></div>
+  {% else %}
+  <label class="check">
+    <input type="checkbox" name="pret" value="1" {{ 'checked' if form.pret and form.pret != '0' }}>
+    <span>C'est un prêt : l'objet me sera rendu. {{ verset('donne_a_qui_demande', 'verse verse-small') }}</span>
+  </label>
+  <div><label for="pret_duree">Durée du prêt <span class="hint">(facultatif, ex. « un week-end », « deux semaines »)</span></label>
+    <input type="text" id="pret_duree" name="pret_duree" maxlength="100" value="{{ form.pret_duree or '' }}"></div>
   {% endif %}
 
   <p class="hint">Rappel : le don d'argent entre membres n'est pas permis.</p>

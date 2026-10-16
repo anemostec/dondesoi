@@ -92,6 +92,16 @@ def annonce_lieu(form):
 RAYONS = (5, 15, 30, 100)
 
 
+def options_from_form(kind, form):
+    """Prêt (don), coup de main collectif et publication pour un proche (besoin)."""
+    return {
+        "pret": int(kind == "don" and bool(form.get("pret"))),
+        "pret_duree": form.get("pret_duree", "").strip()[:100] if kind == "don" else "",
+        "mains": max(0, min(form.get("mains", 0, type=int), 50)) if kind == "besoin" else 0,
+        "pour_proche": form.get("pour_proche", "").strip()[:60] if kind == "besoin" else "",
+    }
+
+
 def essential_from_form(kind, form):
     return int(kind == "besoin" and (form.get("essential") == "1"
                                      or form.get("category") in ESSENTIAL_CATEGORIES))
@@ -106,12 +116,15 @@ def liste():
         return redirect(url_for("trajets.recherche"))
 
     sql = [f"SELECT a.*, u.display_name, {COVER_SQL}, "
-           "(SELECT COUNT(*) FROM prieres p WHERE p.annonce_id = a.id) AS nb_prieres "
+           "(SELECT COUNT(*) FROM prieres p WHERE p.annonce_id = a.id) AS nb_prieres, "
+           "(SELECT COUNT(*) FROM participations pa WHERE pa.annonce_id = a.id) AS nb_mains "
            "FROM annonces a JOIN users u ON u.id = a.user_id WHERE a.status = 'ouverte' AND a.masquee = 0"]
     params = []
     if kind in ("don", "besoin"):
         sql.append("AND a.kind = ?")
         params.append(kind)
+    elif kind == "pret":
+        sql.append("AND a.kind = 'don' AND a.pret = 1")
     if category in CATEGORY_LABELS:
         sql.append("AND a.category = ?")
         params.append(category)
@@ -169,13 +182,15 @@ def nouvelle():
 
         if error is None:
             db = get_db()
+            o = options_from_form(kind, form)
             cur = db.execute(
                 """INSERT INTO annonces (user_id, kind, category, title, description, city,
-                                         postal_code, essential, lat, lon)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                                         postal_code, essential, lat, lon, pret, pret_duree,
+                                         mains, pour_proche)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (g.user["id"], kind, form["category"], form["title"].strip(),
                  form.get("description", "").strip(), city, cp, essential_from_form(kind, form),
-                 lat, lon),
+                 lat, lon, o["pret"], o["pret_duree"], o["mains"], o["pour_proche"]),
             )
             add_photos(db, cur.lastrowid, filenames)
             db.commit()
@@ -219,11 +234,14 @@ def modifier(annonce_id):
                     f"{e} Cette annonce a déjà {remaining} photo(s) sur {MAX_PHOTOS_PAR_ANNONCE}.")
         if error is None:
             db = get_db()
+            o = options_from_form(annonce["kind"], form)
             db.execute(
                 """UPDATE annonces SET title = ?, description = ?, category = ?, city = ?,
-                                       postal_code = ?, essential = ?, lat = ?, lon = ? WHERE id = ?""",
+                                       postal_code = ?, essential = ?, lat = ?, lon = ?, pret = ?,
+                                       pret_duree = ?, mains = ?, pour_proche = ? WHERE id = ?""",
                 (form["title"].strip(), form.get("description", "").strip(), form["category"],
-                 city, cp, essential_from_form(annonce["kind"], form), lat, lon, annonce_id),
+                 city, cp, essential_from_form(annonce["kind"], form), lat, lon, o["pret"],
+                 o["pret_duree"], o["mains"], o["pour_proche"], annonce_id),
             )
             oublier(db, annonce_id)   # le texte a pu changer : le sens sera recalculé
             for p in photos:
@@ -267,7 +285,13 @@ def detail(annonce_id):
     is_owner = g.user is not None and g.user["id"] == annonce["user_id"]
     if annonce["masquee"] and not is_owner:
         abort(404)   # retirée après un signalement
+    participants = db.execute(
+        "SELECT pa.*, u.display_name, u.city FROM participations pa JOIN users u ON u.id = pa.user_id "
+        "WHERE pa.annonce_id = ? ORDER BY pa.created_at", (annonce_id,),
+    ).fetchall()
     ctx = {"annonce": annonce, "auteur": auteur, "is_owner": is_owner,
+           "participants": participants,
+           "je_participe": g.user is not None and any(p["user_id"] == g.user["id"] for p in participants),
            "distance": distance_rows(g.user, annonce) if g.user is not None and not is_owner else None,
            "photos": get_photos(annonce_id),
            "nb_prieres": db.execute("SELECT COUNT(*) FROM prieres WHERE annonce_id = ?",
@@ -316,6 +340,32 @@ def priere(annonce_id):
                    f"Un membre porte votre besoin « {annonce['title']} » dans la prière.",
                    url_for("annonces.detail", annonce_id=annonce_id))
             flash("Merci de porter cette intention dans votre prière.")
+    return redirect(url_for("annonces.detail", annonce_id=annonce_id))
+
+
+@bp.route("/<int:annonce_id>/participer", methods=("POST",))
+@login_required
+def participer(annonce_id):
+    """« Je participe » à un besoin qui demande plusieurs mains."""
+    annonce = get_annonce(annonce_id)
+    if (annonce["kind"] != "besoin" or not annonce["mains"] or annonce["status"] != "ouverte"
+            or annonce["user_id"] == g.user["id"] or annonce["masquee"]):
+        abort(400)
+    db = get_db()
+    if request.form.get("retirer"):
+        db.execute("DELETE FROM participations WHERE annonce_id = ? AND user_id = ?",
+                   (annonce_id, g.user["id"]))
+        db.commit()
+        flash("Votre participation est retirée.")
+    else:
+        cur = db.execute("INSERT OR IGNORE INTO participations (annonce_id, user_id, message) "
+                         "VALUES (?, ?, ?)", (annonce_id, g.user["id"],
+                                              request.form.get("message", "").strip()[:1000]))
+        db.commit()
+        if cur.rowcount:
+            notify(annonce["user_id"], f"{g.user['display_name']} vient vous aider pour « "
+                   f"{annonce['title']} ».", url_for("annonces.detail", annonce_id=annonce_id))
+        flash("Merci ! La personne est prévenue. « Là où deux ou trois sont assemblés en mon nom… »")
     return redirect(url_for("annonces.detail", annonce_id=annonce_id))
 
 

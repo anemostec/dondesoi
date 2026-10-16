@@ -24,6 +24,37 @@
   </div>
   {% endif %}
   {% if annonce.description %}<p style="white-space:pre-line">{{ annonce.description }}</p>{% endif %}
+  {% if annonce.pret %}<p class="panel panel-soft small"><strong>C'est un prêt</strong> : l'objet sera rendu
+    {%- if annonce.pret_duree %} après {{ annonce.pret_duree }}{% endif %}.</p>{% endif %}
+  {% if annonce.pour_proche %}<p class="small muted">Publié pour <strong>{{ annonce.pour_proche }}</strong>,
+    une personne sans internet : c'est le membre qui fait le lien.</p>{% endif %}
+  {% if annonce.mains %}
+  <div class="panel panel-soft">
+    <h2 style="margin-top:0">Un coup de main à plusieurs</h2>
+    <p class="small">{{ participants|length }} personne{{ 's' if participants|length > 1 }} sur
+      {{ annonce.mains }} souhaitée{{ 's' if annonce.mains > 1 }}.</p>
+    {{ verset('deux_ou_trois', 'verse verse-small') }}
+    {% if is_owner %}
+      {% for p in participants %}
+        <p class="small"><strong>{{ p.display_name }}</strong> ({{ p.city }}){% if p.message %} : « {{ p.message }} »{% endif %}</p>
+      {% endfor %}
+    {% elif g.user and annonce.status == 'ouverte' %}
+      <form class="stack" method="post" action="{{ url_for('annonces.participer', annonce_id=annonce.id) }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        {% if je_participe %}
+          <input type="hidden" name="retirer" value="1">
+          <p class="small">Vous participez. Merci !</p>
+          <div><button class="linklike small">Retirer ma participation</button></div>
+        {% else %}
+          <label for="msg-mains" class="hint">Votre message : c'est ce que la personne saura de vous
+            (prénom, disponibilités, moyen de contact…)</label>
+          <textarea id="msg-mains" name="message" style="min-height:3.5rem"></textarea>
+          <div><button class="btn btn-small btn-olive">Je participe</button></div>
+        {% endif %}
+      </form>
+    {% endif %}
+  </div>
+  {% endif %}
   <p class="muted">
     {% if annonce.kind == 'besoin' and g.user %}
       <a href="{{ url_for('auth.membre', user_id=auteur.id) }}">{{ auteur.display_name }}</a>,

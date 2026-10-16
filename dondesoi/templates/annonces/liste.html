@@ -15,6 +15,7 @@
       <option value="">Tous</option>
       <option value="don" {{ 'selected' if kind == 'don' }}>Dons proposés</option>
       <option value="besoin" {{ 'selected' if kind == 'besoin' }}>Besoins</option>
+      <option value="pret" {{ 'selected' if kind == 'pret' }}>Prêts</option>
       {% if g.user %}<option value="trajet">Trajets</option>{% endif %}
     </select>
   </div>
