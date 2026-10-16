@@ -29,6 +29,10 @@ L'esprit du projet est décrit dans `../don_de_soi.tex` et sur la page « Charte
 | L'Évangile au cœur du site | Passages placés là où ils éclairent le geste, « Parole du jour » (`evangile.py`, Louis Segond 1910, domaine public) |
 | Trajets visibles et recherche | Au choix du voyageur, un trajet apparaît dans les annonces, anonyme et sans l'heure, pour les membres seulement ; page « Rechercher un trajet » (départ, arrivée, date, détour, le long de la route) et demande « Ce trajet m'intéresse », à laquelle le voyageur répond en choisissant ce qu'il partage |
 | Trajets pour éviter les frais d'expédition | `trajets.py` : trajets ponctuels ou réguliers (jours de la semaine, heure, période, retour), `calendrier.py` ; sont proposés ceux qui passent à moins de 15 km du donateur puis du receveur, dans le bon sens ; pour un trajet régulier, le donateur choisit l'une des prochaines dates |
+| Modération sans chef | Bouton « Signaler » ; trois membres tirés au sort examinent et décident à la majorité (`moderation.py`) ; masquage par précaution s'il n'y a encore personne à tirer au sort |
+| Prêter, aider à plusieurs | Prêt d'objets (rendu puis reproposé), besoins « à plusieurs mains » avec « Je participe » |
+| Personne de côté | Besoin publié pour une personne sans internet, feuille d'annonces imprimable sans aucun nom, lieux relais (`relais.py`) |
+| Pas de privilège | Aucune page d'administration ; bilan public annuel le même pour tous (`/bilan`) |
 | Inviter (« Viens, et vois », Jn 1,46) | Lien personnel à partager ou invitation par e-mail (`invitations.py`) ; « invité par » visible seulement des deux personnes ; 10 tentatives par jour, une invitation par adresse, refus définitif possible, adresse effacée après 30 jours sans inscription |
 | Avis après le don, droit de réponse, sans blocage | Table `avis` ; visibles sur le profil du receveur ; ils n'empêchent jamais un don |
 | Pas de prosélytisme, liberté de partir | Pages « Charte » et « À qui s'adresse Don de soi » |
@@ -65,6 +69,8 @@ Toute variable d'environnement `DONDESOI_XXX` remplace le réglage `XXX` :
 | `DONDESOI_GEOCODER` | `api` (défaut : coordonnées des villes via [geo.api.gouv.fr](https://geo.api.gouv.fr), service public ; seuls le nom de ville et le code postal lui sont envoyés, une fois par ville) ou `none` |
 | `DONDESOI_SEMANTIC_MODEL` | modèle de sens (défaut `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`, Apache 2.0) ; vide pour désactiver |
 | `DONDESOI_MODEL_CACHE` | dossier du modèle téléchargé (défaut `~/.cache/dondesoi/models`) |
+| `DONDESOI_SITE_URL` | adresse publique du site, pour les liens des récapitulatifs hebdomadaires |
+| `DONDESOI_EDITEUR` | éditeur du site affiché dans les mentions légales (l'association, une fois déclarée) |
 | `DONDESOI_PASSWORD_RESET_MAX_AGE` | durée de validité du lien « mot de passe oublié », en secondes (défaut 3600) |
 
 Les bases existantes sont mises à jour automatiquement au démarrage (`MIGRATIONS` dans `db.py`).
@@ -101,6 +107,16 @@ Mise à jour :
 ssh dondesoi@ssh-dondesoi.alwaysdata.net 'cd ~/dondesoi/app && git pull -q && touch wsgi.py'
 ```
 
+Tâches planifiées (alwaysdata → Avancé → Tâches planifiées), avec les variables de
+`~/dondesoi/env` :
+
+```bash
+# chaque nuit
+cd ~/dondesoi/app && set -a && . ../env && ../venv/bin/flask --app dondesoi sauvegarder
+# le dimanche
+cd ~/dondesoi/app && set -a && . ../env && ../venv/bin/flask --app dondesoi recap-hebdo
+```
+
 Le site est configuré avec `touch-reload = /home/dondesoi/dondesoi/app/wsgi.py` (réglages uWSGI
 additionnels) : toucher `wsgi.py` le recharge, et les migrations de base s'appliquent au démarrage.
 
@@ -121,6 +137,9 @@ dondesoi/
   photos.py        traitement des photos (Pillow)
   evangile.py      passages d'Évangile cités dans le site
   invitations.py   invitations de nouveaux membres
+  moderation.py    signalements et modération collégiale par tirage au sort
+  relais.py        lieux relais
+  taches.py        récapitulatif hebdomadaire et sauvegarde (commandes flask)
   trajets.py       déplacements prévus (ponctuels ou réguliers)
   calendrier.py    prochaines dates et description des trajets réguliers
   templates/       pages HTML (Jinja)
