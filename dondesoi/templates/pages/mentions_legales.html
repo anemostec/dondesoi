@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Mentions légales{% endblock %}
+{% block content %}
+<div class="prose">
+<h1>Mentions légales</h1>
+
+<h2>Éditeur</h2>
+{% if EDITEUR %}
+<p style="white-space:pre-line">{{ EDITEUR }}</p>
+{% else %}
+<p>Le site Don de soi est édité, en attendant la création de l'association Don de soi, par un
+  particulier à titre non professionnel et bénévole. Conformément à la loi n° 2004-575 du 21 juin
+  2004 pour la confiance dans l'économie numérique, son identité a été communiquée à l'hébergeur.</p>
+{% endif %}
+<p>Pour toute demande, y compris le signalement d'un contenu : le bouton « Signaler » présent sur
+  chaque annonce, message et profil{% if CONTACT_EMAIL %}, ou l'adresse
+  <a href="mailto:{{ CONTACT_EMAIL }}">{{ CONTACT_EMAIL }}</a>{% endif %}.</p>
+
+<h2>Hébergeur</h2>
+<p>ALWAYSDATA, SARL au capital de 200 000 €, RCS Paris 492 893 490,
+  91 rue du Faubourg Saint-Honoré, 75008 Paris, France —
+  <a href="https://www.alwaysdata.com">www.alwaysdata.com</a>.</p>
+
+<h2>Contenus publiés par les membres</h2>
+<p>Les annonces, messages, photos et témoignages sont publiés sous la responsabilité de leurs
+  auteurs. Tout contenu peut être signalé ; il est alors examiné par trois membres tirés au sort,
+  qui décident ensemble de le retirer ou non. Un contenu manifestement illicite est retiré
+  promptement.</p>
+
+<h2>Données personnelles</h2>
+<p>Voir la page <a href="{{ url_for('main.confidentialite') }}">Confidentialité</a>. Chacun peut
+  modifier ses informations dans « Mon profil » et supprimer son compte à tout moment.</p>
+
+<h2>Code source</h2>
+<p>Le code du site est un logiciel libre, publié sous licence GNU AGPL v3 :
+  <a href="{{ SOURCE_URL or url_for('main.contribuer') }}">{{ SOURCE_URL or 'voir la page Contribuer' }}</a>.
+  Les citations de l'Évangile suivent la traduction Louis Segond (1910), dans le domaine public.</p>
+</div>
+{% endblock %}

@@ -983,3 +983,13 @@ def test_visibilite_trajet(app):
     assert "Villeurbanne → Grenoble" in anne.get("/trajets/recherche").get_data(as_text=True)
     assert anne.post(f"/trajets/{trajet_id}/visibilite",
                      data={"_csrf": csrf(anne, "/trajets/")}).status_code == 403
+
+
+def test_mentions_legales_et_interdits(app):
+    client = app.test_client()
+    page = client.get("/mentions-legales").get_data(as_text=True)
+    assert "ALWAYSDATA" in page and "492 893 490" in page and "non professionnel" in page
+    register(client, "a@ex.fr", "Anne", "Lyon")
+    resp = post_annonce(client, "don", "objet", "Boîte de médicaments")
+    assert "ne se donnent pas" in resp.get_data(as_text=True)
+    assert isinstance(post_annonce(client, "don", "objet", "Armoire en chêne"), int)   # pas « arme »

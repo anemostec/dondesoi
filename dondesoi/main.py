@@ -85,6 +85,11 @@ def partenaires():
     return render_template("pages/partenaires.html")
 
 
+@bp.route("/mentions-legales")
+def mentions_legales():
+    return render_template("pages/mentions_legales.html")
+
+
 @bp.route("/confidentialite")
 def confidentialite():
     return render_template("pages/confidentialite.html")

@@ -181,6 +181,69 @@ MIGRATIONS = [
         UNIQUE (trajet_id, user_id, date)
     );
     """,
+    # Signalements et modération collégiale, prêts, besoins à plusieurs mains, publication
+    # pour un proche, lieux relais, récapitulatif hebdomadaire.
+    """
+    ALTER TABLE users ADD COLUMN email_frequence TEXT NOT NULL DEFAULT 'immediat';
+    ALTER TABLE users ADD COLUMN dernier_recap TEXT;
+    ALTER TABLE users ADD COLUMN profil_masque INTEGER NOT NULL DEFAULT 0;
+    UPDATE users SET email_frequence = CASE WHEN email_notifications = 1 THEN 'immediat' ELSE 'aucun' END;
+    ALTER TABLE annonces ADD COLUMN pret INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE annonces ADD COLUMN pret_duree TEXT NOT NULL DEFAULT '';
+    ALTER TABLE annonces ADD COLUMN mains INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE annonces ADD COLUMN pour_proche TEXT NOT NULL DEFAULT '';
+    ALTER TABLE annonces ADD COLUMN masquee INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE messages ADD COLUMN masque INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE dons ADD COLUMN rendu_at TEXT;
+    -- Signalement d'un contenu, examiné par trois membres tirés au sort (aucun modérateur attitré).
+    CREATE TABLE signalements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        kind TEXT NOT NULL CHECK (kind IN ('annonce', 'message', 'membre', 'grace')),
+        objet_id INTEGER NOT NULL,
+        auteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,   -- qui a écrit le contenu
+        signale_par INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        motif TEXT NOT NULL,
+        precision TEXT NOT NULL DEFAULT '',
+        statut TEXT NOT NULL DEFAULT 'ouvert' CHECK (statut IN ('ouvert', 'retire', 'maintenu')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        decided_at TEXT,
+        UNIQUE (kind, objet_id, signale_par)
+    );
+    CREATE TABLE moderations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        signalement_id INTEGER NOT NULL REFERENCES signalements(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        vote TEXT CHECK (vote IN ('retirer', 'maintenir')),
+        voted_at TEXT,
+        UNIQUE (signalement_id, user_id)
+    );
+
+    -- « Je participe » à un besoin qui demande plusieurs mains (déménagement, repas…).
+    CREATE TABLE participations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        annonce_id INTEGER NOT NULL REFERENCES annonces(id) ON DELETE CASCADE,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        message TEXT NOT NULL DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        UNIQUE (annonce_id, user_id)
+    );
+
+    -- Lieux relais (paroisse, local associatif, commerce ami) où déposer et retirer des dons.
+    CREATE TABLE lieux_relais (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        nom TEXT NOT NULL,
+        adresse TEXT NOT NULL,
+        postal_code TEXT NOT NULL,
+        city TEXT NOT NULL,
+        lat REAL,
+        lon REAL,
+        horaires TEXT NOT NULL DEFAULT '',
+        description TEXT NOT NULL DEFAULT '',
+        propose_par INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        masque INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    """,
 ]
 
 

@@ -63,6 +63,8 @@ def create_app(test_config=None):
         PASSWORD_RESET_MAX_AGE=3600,
         # Adresse de contact affichée sur la page « Confidentialité ».
         CONTACT_EMAIL="",
+        # Éditeur du site pour les mentions légales (l'association, une fois déclarée).
+        EDITEUR="",
         # En production derrière un proxy HTTPS (Caddy) : DONDESOI_BEHIND_PROXY=true.
         BEHIND_PROXY=False,
         # Distance réelle : coordonnées des villes via geo.api.gouv.fr (« none » pour désactiver).
@@ -140,6 +142,7 @@ def create_app(test_config=None):
         return {"CATEGORIES": CATEGORIES, "CATEGORY_LABELS": CATEGORY_LABELS,
                 "ESSENTIAL_CATEGORIES": ESSENTIAL_CATEGORIES,
                 "SOURCE_URL": app.config["SOURCE_URL"],
-                "CONTACT_EMAIL": app.config["CONTACT_EMAIL"]}
+                "CONTACT_EMAIL": app.config["CONTACT_EMAIL"],
+                "EDITEUR": app.config["EDITEUR"]}
 
     return app

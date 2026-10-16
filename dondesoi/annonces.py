@@ -28,6 +28,14 @@ MONEY_PATTERN = re.compile(
 )
 
 
+# Ce qui ne se donne pas sur Don de soi (charte, « Ce qui ne se donne pas »).
+INTERDITS_PATTERN = re.compile(
+    r"\b(m[ée]dicaments?|antibiotiques?|anxiolytiques?|armes?|fusils?|pistolets?|munitions?|"
+    r"cigarettes?|tabac|alcools?)\b",
+    re.IGNORECASE,
+)
+
+
 def get_annonce(annonce_id):
     annonce = get_db().execute("SELECT * FROM annonces WHERE id = ?", (annonce_id,)).fetchone()
     if annonce is None:
@@ -60,6 +68,9 @@ def validate_form(form):
     if MONEY_PATTERN.search(title + " " + form.get("description", "")):
         return ("Le don d'argent entre membres n'est pas permis. Vous pouvez soutenir la "
                 "communauté via la page « Don d'argent ».")
+    if INTERDITS_PATTERN.search(title + " " + form.get("description", "")):
+        return ("Médicaments, armes, tabac et alcool ne se donnent pas sur Don de soi "
+                "(voir la charte, « Ce qui ne se donne pas »).")
     return None
 
 

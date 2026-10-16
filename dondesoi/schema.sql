@@ -1,3 +1,7 @@
+DROP TABLE IF EXISTS lieux_relais;
+DROP TABLE IF EXISTS participations;
+DROP TABLE IF EXISTS moderations;
+DROP TABLE IF EXISTS signalements;
 DROP TABLE IF EXISTS trajet_demandes;
 DROP TABLE IF EXISTS codes_postaux;
 DROP TABLE IF EXISTS invitations_refusees;
@@ -27,7 +31,12 @@ CREATE TABLE users (
     bio TEXT NOT NULL DEFAULT '',
     -- Coordonnées que le membre accepte de montrer aux donateurs.
     contact TEXT NOT NULL DEFAULT '',
-    email_notifications INTEGER NOT NULL DEFAULT 1,
+    email_notifications INTEGER NOT NULL DEFAULT 1,   -- ancien réglage, remplacé par email_frequence
+    -- E-mails de notification : 'immediat', 'hebdo' (récapitulatif) ou 'aucun'.
+    email_frequence TEXT NOT NULL DEFAULT 'immediat',
+    dernier_recap TEXT,
+    -- Présentation et contact masqués après un signalement retenu.
+    profil_masque INTEGER NOT NULL DEFAULT 0,
     lat REAL,
     lon REAL,
     -- Qui a invité ce membre (visible seulement de lui et de la personne qui l'a invité).
@@ -49,6 +58,15 @@ CREATE TABLE annonces (
     city TEXT NOT NULL,
     postal_code TEXT NOT NULL DEFAULT '',
     essential INTEGER NOT NULL DEFAULT 0,
+    -- Don : prêt (l'objet sera rendu) et durée indicative.
+    pret INTEGER NOT NULL DEFAULT 0,
+    pret_duree TEXT NOT NULL DEFAULT '',
+    -- Besoin : nombre de personnes souhaitées pour un coup de main collectif (0 = non).
+    mains INTEGER NOT NULL DEFAULT 0,
+    -- Publié par le membre pour une personne sans internet (prénom de cette personne).
+    pour_proche TEXT NOT NULL DEFAULT '',
+    -- Retirée après un signalement retenu.
+    masquee INTEGER NOT NULL DEFAULT 0,
     lat REAL,
     lon REAL,
     status TEXT NOT NULL DEFAULT 'ouverte'
@@ -106,7 +124,9 @@ CREATE TABLE dons (
     -- Date choisie quand le trajet sollicité est régulier.
     transport_date TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    completed_at TEXT
+    completed_at TEXT,
+    -- Prêt : date où le donateur a indiqué que l'objet lui a été rendu.
+    rendu_at TEXT
 );
 
 -- Avis du donateur sur le receveur, avec droit de réponse.
@@ -129,6 +149,7 @@ CREATE TABLE messages (
     body TEXT NOT NULL DEFAULT '',
     -- Photo jointe, servie seulement aux participants du don.
     photo TEXT,
+    masque INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -242,9 +263,58 @@ CREATE TABLE trajet_demandes (
     UNIQUE (trajet_id, user_id, date)
 );
 
+-- Signalement d'un contenu, examiné par trois membres tirés au sort (aucun modérateur attitré).
+CREATE TABLE signalements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    kind TEXT NOT NULL CHECK (kind IN ('annonce', 'message', 'membre', 'grace')),
+    objet_id INTEGER NOT NULL,
+    auteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,   -- qui a écrit le contenu
+    signale_par INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    motif TEXT NOT NULL,
+    precision TEXT NOT NULL DEFAULT '',
+    statut TEXT NOT NULL DEFAULT 'ouvert' CHECK (statut IN ('ouvert', 'retire', 'maintenu')),
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    decided_at TEXT,
+    UNIQUE (kind, objet_id, signale_par)
+);
+CREATE TABLE moderations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    signalement_id INTEGER NOT NULL REFERENCES signalements(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    vote TEXT CHECK (vote IN ('retirer', 'maintenir')),
+    voted_at TEXT,
+    UNIQUE (signalement_id, user_id)
+);
+
+-- « Je participe » à un besoin qui demande plusieurs mains (déménagement, repas…).
+CREATE TABLE participations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    annonce_id INTEGER NOT NULL REFERENCES annonces(id) ON DELETE CASCADE,
+    user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (annonce_id, user_id)
+);
+
+-- Lieux relais (paroisse, local associatif, commerce ami) où déposer et retirer des dons.
+CREATE TABLE lieux_relais (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nom TEXT NOT NULL,
+    adresse TEXT NOT NULL,
+    postal_code TEXT NOT NULL,
+    city TEXT NOT NULL,
+    lat REAL,
+    lon REAL,
+    horaires TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT '',
+    propose_par INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    masque INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 CREATE INDEX idx_messages_don ON messages (don_id);
 CREATE INDEX idx_notifications_user ON notifications (user_id, read_at);
 CREATE INDEX idx_annonces_open ON annonces (kind, status);
 CREATE INDEX idx_trajets_date ON trajets (date);
 
-PRAGMA user_version = 9;
+PRAGMA user_version = 10;
