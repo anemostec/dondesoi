@@ -107,7 +107,7 @@ def liste():
 
     sql = [f"SELECT a.*, u.display_name, {COVER_SQL}, "
            "(SELECT COUNT(*) FROM prieres p WHERE p.annonce_id = a.id) AS nb_prieres "
-           "FROM annonces a JOIN users u ON u.id = a.user_id WHERE a.status = 'ouverte'"]
+           "FROM annonces a JOIN users u ON u.id = a.user_id WHERE a.status = 'ouverte' AND a.masquee = 0"]
     params = []
     if kind in ("don", "besoin"):
         sql.append("AND a.kind = ?")
@@ -265,6 +265,8 @@ def detail(annonce_id):
     annonce = get_annonce(annonce_id)
     auteur = db.execute("SELECT * FROM users WHERE id = ?", (annonce["user_id"],)).fetchone()
     is_owner = g.user is not None and g.user["id"] == annonce["user_id"]
+    if annonce["masquee"] and not is_owner:
+        abort(404)   # retirée après un signalement
     ctx = {"annonce": annonce, "auteur": auteur, "is_owner": is_owner,
            "distance": distance_rows(g.user, annonce) if g.user is not None and not is_owner else None,
            "photos": get_photos(annonce_id),

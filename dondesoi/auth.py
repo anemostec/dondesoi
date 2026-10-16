@@ -255,7 +255,7 @@ def membre(user_id):
         abort(404)
     besoins = db.execute(
         f"SELECT a.*, u.display_name, {COVER_SQL} FROM annonces a JOIN users u ON u.id = a.user_id "
-        "WHERE a.user_id = ? AND a.kind = 'besoin' AND a.status = 'ouverte' "
+        "WHERE a.user_id = ? AND a.kind = 'besoin' AND a.status = 'ouverte' AND a.masquee = 0 "
         "ORDER BY a.created_at DESC", (user_id,),
     ).fetchall()
     avis = db.execute(

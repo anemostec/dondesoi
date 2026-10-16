@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Contenus à examiner{% endblock %}
+{% block content %}
+<h1>Contenus à examiner</h1>
+{{ verset('ne_jugez_point') }}
+<p class="muted">Vous avez été tiré au sort, avec deux autres membres, pour examiner ces contenus
+  signalés. Il ne s'agit pas de juger la personne, mais de dire si ce contenu a sa place sur Don de soi,
+  au regard de la charte et de la loi. La décision se prend à la majorité.</p>
+{% for c in cas %}{% set m = c.m %}
+<div class="panel">
+  <p class="small muted" style="margin-top:0">{{ {'annonce': 'Annonce', 'message': 'Message', 'membre': 'Profil', 'grace': 'Action de grâce'}[m.kind] }}
+    signalée le {{ m.signale_le|heure }} · motif : {{ c.motif }}</p>
+  {% if m.precision %}<p class="small">Précision : « {{ m.precision }} »</p>{% endif %}
+  <blockquote class="contenu-signale">{{ c.texte }}</blockquote>
+  {% if m.statut != 'ouvert' %}
+    <p class="small"><strong>Décision : contenu {{ 'retiré' if m.statut == 'retire' else 'maintenu' }}.</strong>
+      {% if m.vote %}Votre avis : {{ m.vote }}.{% endif %}</p>
+  {% elif m.vote %}
+    <p class="small">Votre avis : <strong>{{ m.vote }}</strong>. En attente des autres membres.</p>
+  {% else %}
+  <form method="post" action="{{ url_for('moderation.voter', moderation_id=m.id) }}" class="actions" style="margin:0">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn btn-small btn-danger" name="vote" value="retirer">Retirer ce contenu</button>
+    <button class="btn btn-small btn-ghost" name="vote" value="maintenir">Il peut rester</button>
+  </form>
+  {% endif %}
+</div>
+{% else %}
+<p class="muted">Aucun contenu à examiner pour vous.</p>
+{% endfor %}
+{% endblock %}

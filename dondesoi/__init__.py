@@ -95,7 +95,7 @@ def create_app(test_config=None):
     security.init_app(app)
     notifications.init_app(app)
 
-    from . import annonces, auth, dons, invitations, main, trajets
+    from . import annonces, auth, dons, invitations, main, moderation, trajets
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(annonces.bp)
@@ -103,6 +103,7 @@ def create_app(test_config=None):
     app.register_blueprint(trajets.bp)
     app.register_blueprint(notifications.bp)
     app.register_blueprint(invitations.bp)
+    app.register_blueprint(moderation.bp)
 
     from .calendrier import date_fr
     from .photos import thumb_name
@@ -143,6 +144,7 @@ def create_app(test_config=None):
                 "ESSENTIAL_CATEGORIES": ESSENTIAL_CATEGORIES,
                 "SOURCE_URL": app.config["SOURCE_URL"],
                 "CONTACT_EMAIL": app.config["CONTACT_EMAIL"],
-                "EDITEUR": app.config["EDITEUR"]}
+                "EDITEUR": app.config["EDITEUR"],
+                "MOTIFS_SIGNALEMENT": moderation.MOTIFS}
 
     return app

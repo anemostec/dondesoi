@@ -1,0 +1,21 @@
+{#- Bouton « Signaler » : le contenu sera examiné par trois membres tirés au sort. -#}
+{% macro signaler(kind, objet_id) %}
+{% if g.user %}
+<details class="signaler">
+  <summary class="linklike small">Signaler</summary>
+  <form class="stack" method="post" action="{{ url_for('moderation.signaler') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="kind" value="{{ kind }}">
+    <input type="hidden" name="objet_id" value="{{ objet_id }}">
+    <input type="hidden" name="retour" value="{{ request.path }}">
+    <select name="motif" aria-label="Motif du signalement" required>
+      <option value="">Motif…</option>
+      {% for cle, libelle in MOTIFS_SIGNALEMENT.items() %}<option value="{{ cle }}">{{ libelle }}</option>{% endfor %}
+    </select>
+    <input type="text" name="precision" placeholder="Précision (facultatif)" maxlength="1000">
+    <p class="hint">Trois membres tirés au sort examineront ce contenu.</p>
+    <div><button class="btn btn-small btn-ghost">Envoyer le signalement</button></div>
+  </form>
+</details>
+{% endif %}
+{% endmacro %}

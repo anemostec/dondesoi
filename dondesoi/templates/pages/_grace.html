@@ -3,4 +3,5 @@
   {% if gr.photo %}<img src="{{ url_for('dons.grace_photo', grace_id=gr.id, t=1) }}" alt="" loading="lazy">{% endif %}
   <p style="white-space:pre-line">« {{ gr.body }} »</p>
   <p class="small muted">Un membre, {{ gr.city }} · {{ gr.created_at|heure }}</p>
+  {% from "_signaler.html" import signaler with context %}{{ signaler('grace', gr.id) }}
 </article>

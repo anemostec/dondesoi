@@ -232,3 +232,11 @@ details.demande-trajet { margin-top: .5rem; }
 details.demande-trajet > summary { list-style: none; display: inline-block; }
 details.demande-trajet > summary::-webkit-details-marker { display: none; }
 .demande-recue { margin: .6rem 0 0; padding: .7rem .9rem; }
+
+/* Signalement et modération */
+details.signaler { margin-top: .4rem; }
+details.signaler > summary { list-style: none; display: inline; cursor: pointer; }
+details.signaler > summary::-webkit-details-marker { display: none; }
+details.signaler form { margin-top: .5rem; max-width: 420px; }
+.contenu-signale { white-space: pre-line; background: var(--surface-2); border-left: 3px solid var(--border);
+  margin: .6rem 0; padding: .6rem .9rem; border-radius: 6px; }

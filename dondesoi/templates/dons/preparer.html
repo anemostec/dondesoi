@@ -34,8 +34,10 @@
   <div class="panel">
     <h3 style="margin-top:0">{{ receiver.display_name }}</h3>
     <p class="muted small">{{ receiver.city }}</p>
+    {% if not receiver.profil_masque %}
     {% if receiver.bio %}<p class="small">{{ receiver.bio }}</p>{% endif %}
     {% if receiver.contact %}<p class="small"><strong>Contact :</strong> {{ receiver.contact }}</p>{% endif %}
+    {% endif %}
     {% if besoin %}<p class="small"><strong>Besoin :</strong> {{ besoin.title }}</p>{% endif %}
     <h3>Avis reçus ({{ avis|length }})</h3>
     {% for a in avis %}

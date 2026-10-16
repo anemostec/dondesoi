@@ -11,6 +11,7 @@
     {% if annonce.status != 'ouverte' %}<span class="tag">{{ 'attribuée' if annonce.status == 'attribuee' else 'clôturée' }}</span>{% endif %}
   </div>
   <h1>{{ annonce.title }}</h1>
+  {% if annonce.masquee %}<div class="flash flash-error">Cette annonce a été retirée après un signalement examiné par des membres tirés au sort. Elle n'est plus visible des autres membres.</div>{% endif %}
   {% if photos %}
   <div class="gallery">
     {% for p in photos %}
@@ -74,6 +75,7 @@
 </div>
 
 <aside>
+  {% from "_signaler.html" import signaler with context %}
   <div class="panel" style="margin-top:1.4rem">
   {% if not g.user %}
     <p><a href="{{ url_for('auth.connexion', next=request.path) }}">Connectez-vous</a> pour
@@ -134,6 +136,7 @@
       <p class="small">Publiez d'abord <a href="{{ url_for('annonces.nouvelle', kind='don') }}">ce que vous pouvez donner</a>, puis revenez ici pour l'offrir à {{ auteur.display_name }}.</p>
     {% endif %}
   {% endif %}
+  {% if g.user and not is_owner %}{{ signaler('annonce', annonce.id) }}{% endif %}
   </div>
 </aside>
 </div>

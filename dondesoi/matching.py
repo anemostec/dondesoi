@@ -118,7 +118,7 @@ def candidats_pour_offre(db, offre, limit=30):
     besoins = db.execute(
         """SELECT a.*, u.display_name, u.city AS user_city
            FROM annonces a JOIN users u ON u.id = a.user_id
-           WHERE a.kind = 'besoin' AND a.status = 'ouverte' AND a.user_id != ?""",
+           WHERE a.kind = 'besoin' AND a.status = 'ouverte' AND a.masquee = 0 AND a.user_id != ?""",
         (offre["user_id"],),
     ).fetchall()
     interets = {
@@ -188,7 +188,7 @@ def offres_pour_besoin(db, besoin, limit=10):
     """Dons proposés qui pourraient répondre à un besoin."""
     offres = db.execute(
         f"""SELECT a.*, {COVER_SQL} FROM annonces a
-            WHERE a.kind = 'don' AND a.status = 'ouverte' AND a.user_id != ?""",
+            WHERE a.kind = 'don' AND a.status = 'ouverte' AND a.masquee = 0 AND a.user_id != ?""",
         (besoin["user_id"],),
     ).fetchall()
     sims = _sims(db, besoin, offres)

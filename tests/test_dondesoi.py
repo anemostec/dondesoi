@@ -993,3 +993,50 @@ def test_mentions_legales_et_interdits(app):
     resp = post_annonce(client, "don", "objet", "Boîte de médicaments")
     assert "ne se donnent pas" in resp.get_data(as_text=True)
     assert isinstance(post_annonce(client, "don", "objet", "Armoire en chêne"), int)   # pas « arme »
+
+
+# --- Signalement et modération collégiale ----------------------------------------------
+
+def test_moderation_collegiale(app):
+    clients = {}
+    for i, nom in enumerate(["Anne", "Paul", "Marie", "Luc", "Jean"], start=1):
+        clients[i] = app.test_client()
+        register(clients[i], f"m{i}@ex.fr", nom, "Lyon")
+    annonce = post_annonce(clients[1], "don", "objet", "Vélo", "contactez-moi en privé")
+    url = f"/annonces/{annonce}"
+    # On ne peut pas signaler son propre contenu.
+    assert clients[1].post("/signaler", data={"_csrf": csrf(clients[1], url), "kind": "annonce",
+                           "objet_id": annonce, "motif": "argent"}).status_code == 400
+    clients[2].post("/signaler", data={"_csrf": csrf(clients[2], url), "kind": "annonce",
+                    "objet_id": annonce, "motif": "argent", "retour": url})
+    with app.app_context():
+        jures = [r[0] for r in get_db().execute("SELECT user_id FROM moderations")]
+    assert len(jures) == 3 and 1 not in jures and 2 not in jures      # ni l'auteur ni le signaleur
+    for j in jures:
+        assert any("tiré au sort" in b for b in unread(app, j))
+    # Deux votes « retirer » sur trois : l'annonce disparaît pour les autres.
+    for j in jures[:2]:
+        page = clients[j].get("/moderation").get_data(as_text=True)
+        assert "contactez-moi en privé" in page
+        mid = re.search(r"/moderation/(\d+)/vote", page).group(1)
+        clients[j].post(f"/moderation/{mid}/vote", data={"_csrf": csrf(clients[j], "/moderation"),
+                                                         "vote": "retirer"})
+    assert clients[2].get(url).status_code == 404
+    assert "Vélo" not in clients[2].get("/annonces/").get_data(as_text=True)
+    assert "a été retirée" in clients[1].get(url).get_data(as_text=True)   # l'auteur la voit encore
+    assert any("retiré" in b for b in unread(app, 1))
+    # Un juré ne peut voter que pour lui-même.
+    with app.app_context():
+        autre = get_db().execute("SELECT id FROM moderations WHERE user_id = ?", (jures[2],)).fetchone()[0]
+    assert clients[jures[0]].post(f"/moderation/{autre}/vote", data={
+        "_csrf": csrf(clients[jures[0]], "/moderation"), "vote": "maintenir"}).status_code == 403
+
+
+def test_signalement_sans_jures_masque_par_precaution(app):
+    anne, paul = app.test_client(), app.test_client()
+    register(anne, "a@ex.fr", "Anne", "Lyon")
+    register(paul, "p@ex.fr", "Paul", "Lyon")
+    annonce = post_annonce(anne, "don", "objet", "Table")
+    paul.post("/signaler", data={"_csrf": csrf(paul, f"/annonces/{annonce}"), "kind": "annonce",
+              "objet_id": annonce, "motif": "charte"})
+    assert paul.get(f"/annonces/{annonce}").status_code == 404

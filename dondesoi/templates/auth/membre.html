@@ -3,8 +3,14 @@
 {% block content %}
 <h1>{{ membre.display_name }}</h1>
 <p class="muted">{{ membre.city }} · membre depuis le {{ membre.created_at[:10] }} · {{ nb_recus }} don{{ 's' if nb_recus > 1 }} reçu{{ 's' if nb_recus > 1 }}</p>
+{% from "_signaler.html" import signaler with context %}
+{% if membre.profil_masque %}
+<p class="muted small">La présentation de ce membre a été retirée après un signalement.</p>
+{% else %}
 {% if membre.bio %}<p class="prose">{{ membre.bio }}</p>{% endif %}
 {% if membre.contact %}<p><strong>Contact :</strong> {{ membre.contact }}</p>{% endif %}
+{% endif %}
+{% if g.user.id != membre.id %}{{ signaler('membre', membre.id) }}{% endif %}
 
 <div class="two-col">
 <div>

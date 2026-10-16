@@ -133,7 +133,9 @@ def detail(don_id):
 
     messages = [
         {"label": author_label(m["author_id"], uid, don, receiver["display_name"], trajet),
-         "mine": m["author_id"] == uid, "body": m["body"], "photo": m["photo"], "id": m["id"],
+         "mine": m["author_id"] == uid, "masque": m["masque"],
+         "body": "" if m["masque"] else m["body"], "photo": None if m["masque"] else m["photo"],
+         "id": m["id"],
          "created_at": m["created_at"]}
         for m in db.execute("SELECT * FROM messages WHERE don_id = ? ORDER BY id", (don_id,))
     ]
@@ -318,9 +320,9 @@ def message_photo(don_id, message_id):
     don = get_don(don_id)
     if g.user["id"] not in participants(don, get_trajet(don)):
         abort(403)
-    msg = get_db().execute("SELECT photo FROM messages WHERE id = ? AND don_id = ?",
+    msg = get_db().execute("SELECT photo, masque FROM messages WHERE id = ? AND don_id = ?",
                            (message_id, don_id)).fetchone()
-    if msg is None or not msg["photo"]:
+    if msg is None or not msg["photo"] or msg["masque"]:
         abort(404)
     return _send_private("messages", msg["photo"], request.args.get("t"))
 

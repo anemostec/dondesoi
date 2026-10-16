@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}{{ don.title }}{% endblock %}
+{% from "_signaler.html" import signaler with context %}
 {% block content %}
 {% set statuts = {'en_cours': 'en cours', 'realise': 'réalisé', 'annule': 'annulé'} %}
 <h1>{{ don.title }}</h1>
@@ -107,12 +108,14 @@
     {% for m in messages %}
       <div class="msg {{ 'msg-mine' if m.mine }}">
         <div class="small muted"><strong>{{ m.label }}</strong> · {{ m.created_at|heure }}</div>
+        {% if m.masque %}<div class="small muted">Message retiré après un signalement.</div>{% endif %}
         {% if m.body %}<div style="white-space:pre-line">{{ m.body }}</div>{% endif %}
         {% if m.photo %}
           <a href="{{ url_for('dons.message_photo', don_id=don.id, message_id=m.id) }}" target="_blank" rel="noopener">
             <img class="msg-photo" src="{{ url_for('dons.message_photo', don_id=don.id, message_id=m.id, t=1) }}" alt="Photo jointe" loading="lazy">
           </a>
         {% endif %}
+        {% if not m.mine and not m.masque %}{{ signaler('message', m.id) }}{% endif %}
       </div>
     {% else %}
       <p class="muted small">Aucun message pour l'instant.</p>
