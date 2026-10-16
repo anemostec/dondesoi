@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% from "_ville.html" import champ_ville %}
+{% from "_signaler.html" import signaler with context %}
+{% block title %}Lieux relais{% endblock %}
+{% block content %}
+<h1>Lieux relais</h1>
+<p class="muted">Une paroisse, un local associatif, un commerce ami où l'on peut déposer un don et
+  où le receveur ou un voyageur vient le chercher. Les dons voyagent ainsi plus facilement, même
+  sans se croiser.</p>
+
+<div class="two-col">
+<div>
+  {% if lieux %}
+  <ul class="list panel">
+    {% for l in lieux %}
+    <li>
+      <strong>{{ l.nom }}</strong>{% if l.distance is not none %} <span class="muted small">· à {{ '%.0f'|format(l.distance) if l.distance >= 1 else "moins d'un" }} km</span>{% endif %}
+      <div class="small">{{ l.adresse }}, {{ l.postal_code }} {{ l.city }}</div>
+      {% if l.horaires %}<div class="small muted">{{ l.horaires }}</div>{% endif %}
+      {% if l.description %}<div class="small" style="white-space:pre-line">{{ l.description }}</div>{% endif %}
+      {{ signaler('relais', l.id) }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Aucun lieu relais pour l'instant. Votre paroisse ou une association de votre
+    quartier accepterait peut-être de l'être ?</p>
+  {% endif %}
+</div>
+<aside>
+  {% if g.user %}
+  <form class="stack panel" method="post">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h3 style="margin-top:0">Proposer un lieu relais</h3>
+    <p class="hint">Seulement avec l'accord du lieu lui-même.</p>
+    <div><label for="nom">Nom du lieu</label>
+      <input type="text" id="nom" name="nom" required maxlength="120" value="{{ form.nom or '' }}"
+             placeholder="Ex. : accueil de la paroisse Saint-Jean"></div>
+    <div><label for="adresse">Adresse</label>
+      <input type="text" id="adresse" name="adresse" required maxlength="200" value="{{ form.adresse or '' }}"></div>
+    {{ champ_ville('postal_code', 'city', form.postal_code, form.city) }}
+    <div><label for="horaires">Horaires d'accueil</label>
+      <input type="text" id="horaires" name="horaires" maxlength="200" value="{{ form.horaires or '' }}"
+             placeholder="Ex. : mardi et samedi, 9 h – 12 h"></div>
+    <div><label for="description">Précisions</label>
+      <textarea id="description" name="description" style="min-height:4rem">{{ form.description or '' }}</textarea></div>
+    <div><button class="btn btn-small">Proposer ce lieu</button></div>
+  </form>
+  {% else %}
+  <p class="small"><a href="{{ url_for('auth.connexion', next=request.path) }}">Connectez-vous</a> pour proposer un lieu.</p>
+  {% endif %}
+</aside>
+</div>
+{% endblock %}

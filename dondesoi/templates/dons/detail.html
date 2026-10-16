@@ -96,6 +96,13 @@
   </div>
   {% endif %}
 
+  {% if relais %}
+  <div class="panel panel-soft small">
+    <strong>Lieux relais proches</strong> pour déposer ou retirer ce don sans se croiser :
+    <ul style="margin:.3rem 0 0">{% for l in relais %}<li>{{ l.nom }} — {{ l.adresse }}, {{ l.city }}{% if l.horaires %} ({{ l.horaires }}){% endif %}</li>{% endfor %}</ul>
+  </div>
+  {% endif %}
+
   {% if is_transporter %}
   <h2>Transport</h2>
   <p>Trajet {{ trajet.from_city }} → {{ trajet.to_city }}, le

@@ -8,7 +8,7 @@
   au regard de la charte et de la loi. La décision se prend à la majorité.</p>
 {% for c in cas %}{% set m = c.m %}
 <div class="panel">
-  <p class="small muted" style="margin-top:0">{{ {'annonce': 'Annonce', 'message': 'Message', 'membre': 'Profil', 'grace': 'Action de grâce'}[m.kind] }}
+  <p class="small muted" style="margin-top:0">{{ {'annonce': 'Annonce', 'message': 'Message', 'membre': 'Profil', 'grace': 'Action de grâce', 'relais': 'Lieu relais'}[m.kind] }}
     signalée le {{ m.signale_le|heure }} · motif : {{ c.motif }}</p>
   {% if m.precision %}<p class="small">Précision : « {{ m.precision }} »</p>{% endif %}
   <blockquote class="contenu-signale">{{ c.texte }}</blockquote>

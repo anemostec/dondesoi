@@ -1081,3 +1081,32 @@ def test_coup_de_main_et_proche(app):
     page = marie.get(url).get_data(as_text=True)
     assert "2 personnes sur" in page and "Paul, samedi matin" in page
     assert "2/3 personnes" in luc.get("/annonces/").get_data(as_text=True)
+
+
+# --- Feuille imprimable et lieux relais --------------------------------------------------
+
+def test_feuille_imprimable(app):
+    anne, paul = app.test_client(), app.test_client()
+    register(anne, "a@ex.fr", "Anne", "Lyon")
+    register(paul, "p@ex.fr", "Paul", "Villeurbanne")
+    post_annonce(paul, "besoin", "nourriture", "Colis alimentaire")
+    post_annonce(paul, "don", "objet", "Poussette")
+    page = anne.get("/annonces/imprimer?relais=Marie%2C+accueil+paroisse").get_data(as_text=True)
+    assert "Colis alimentaire" in page and "première nécessité" in page and "Poussette" in page
+    assert "Paul" not in page and "Marie, accueil paroisse" in page      # aucun nom de membre
+
+
+def test_lieux_relais(app):
+    anne, paul = app.test_client(), app.test_client()
+    register(anne, "a@ex.fr", "Anne", "Lyon")
+    register(paul, "p@ex.fr", "Paul", "Grenoble")
+    anne.post("/relais/", data={"_csrf": csrf(anne, "/relais/"), "nom": "Paroisse Saint-Jean",
+                                "adresse": "1 place Saint-Jean", "postal_code": "69001", "city": "Lyon",
+                                "horaires": "samedi 9 h – 12 h"})
+    page = paul.get("/relais/").get_data(as_text=True)
+    assert "Paroisse Saint-Jean" in page and "samedi 9 h" in page
+    # Proposé dans la page d'un don entre Lyon et Grenoble.
+    offre = post_annonce(anne, "don", "objet", "Table")
+    don_url = anne.post("/dons/preparer", data={"_csrf": csrf(anne, "/tableau-de-bord"),
+                        "offre": offre, "receveur": 2, "shared_info": ""}).headers["Location"]
+    assert "Lieux relais proches" in paul.get(don_url).get_data(as_text=True)

@@ -159,6 +159,36 @@ def liste():
                            localise=localise, trajets=trajets)
 
 
+@bp.route("/imprimer")
+@login_required
+def imprimer():
+    """Feuille à imprimer et afficher (paroisse, salle commune) : besoins et dons proches,
+    sans aucun nom, pour les personnes qui n'utilisent pas internet."""
+    rayon = min(max(request.args.get("rayon", 15, type=int), 1), 100)
+    relais = request.args.get("relais", "").strip()[:120]
+    u = g.user
+    rows = get_db().execute(
+        "SELECT a.* FROM annonces a WHERE a.status = 'ouverte' AND a.masquee = 0 "
+        "ORDER BY a.kind = 'don', a.essential DESC, a.created_at DESC"
+    ).fetchall()
+    annonces = []
+    for row in rows:
+        d = distance_rows(u, row)
+        if d is not None and d > rayon:
+            continue
+        if d is None and normalize_city(row["city"]) != normalize_city(u["city"]):
+            continue
+        annonces.append({"a": row, "essential": row["kind"] == "besoin" and (
+            row["essential"] or row["category"] in ESSENTIAL_CATEGORIES)})
+    besoins = [x for x in annonces if x["a"]["kind"] == "besoin"][:25]
+    dons = [x for x in annonces if x["a"]["kind"] == "don"][:25]
+    from datetime import date
+    from .calendrier import date_fr
+    return render_template("annonces/imprimer.html", besoins=besoins, dons=dons, rayon=rayon,
+                           relais=relais, site=url_for("main.accueil", _external=True),
+                           today_fr=date_fr(date.today()))
+
+
 @bp.route("/nouvelle", methods=("GET", "POST"))
 @login_required
 def nouvelle():

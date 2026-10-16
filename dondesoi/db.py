@@ -198,7 +198,7 @@ MIGRATIONS = [
     -- Signalement d'un contenu, examiné par trois membres tirés au sort (aucun modérateur attitré).
     CREATE TABLE signalements (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        kind TEXT NOT NULL CHECK (kind IN ('annonce', 'message', 'membre', 'grace')),
+        kind TEXT NOT NULL CHECK (kind IN ('annonce', 'message', 'membre', 'grace', 'relais')),
         objet_id INTEGER NOT NULL,
         auteur_id INTEGER REFERENCES users(id) ON DELETE SET NULL,   -- qui a écrit le contenu
         signale_par INTEGER REFERENCES users(id) ON DELETE SET NULL,

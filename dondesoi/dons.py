@@ -143,6 +143,9 @@ def detail(don_id):
     ctx = {"don": don, "avis": avis, "grace": grace, "trajet": trajet, "is_donor": is_donor,
            "is_receiver": is_receiver, "is_transporter": is_transporter, "messages": messages,
            "can_write": uid in participants(don, trajet) and don["status"] != "annule"}
+    if (is_donor or is_receiver) and don["status"] == "en_cours":
+        from .relais import relais_proches
+        ctx["relais"] = relais_proches(db, donor, receiver)
     if is_donor:
         ctx["receiver"] = receiver
         ctx["meme_ville"], ctx["distance"] = meme_endroit(donor, receiver)

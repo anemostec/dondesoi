@@ -95,7 +95,7 @@ def create_app(test_config=None):
     security.init_app(app)
     notifications.init_app(app)
 
-    from . import annonces, auth, dons, invitations, main, moderation, trajets
+    from . import annonces, auth, dons, invitations, main, moderation, relais, trajets
     app.register_blueprint(main.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(annonces.bp)
@@ -104,6 +104,7 @@ def create_app(test_config=None):
     app.register_blueprint(notifications.bp)
     app.register_blueprint(invitations.bp)
     app.register_blueprint(moderation.bp)
+    app.register_blueprint(relais.bp)
 
     from .calendrier import date_fr
     from .photos import thumb_name

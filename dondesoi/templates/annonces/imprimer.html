@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Don de soi – annonces près de {{ g.user.city }}</title>
+<style>
+  body { font: 14px/1.45 Georgia, "Palatino Linotype", serif; color: #2b2520; margin: 1.5cm; }
+  h1 { font-size: 22px; margin: 0 0 .2cm; } h2 { font-size: 17px; margin: .6cm 0 .2cm; border-bottom: 1px solid #a4472d; }
+  .croix { color: #a4472d; } .meta { color: #6e6359; font-size: 12px; }
+  ul { padding-left: 1.1em; margin: 0; } li { margin: .12cm 0; } .urgent { font-weight: bold; }
+  .cat { color: #6e6359; font-size: 12px; } .encadre { border: 1px solid #a4472d; padding: .3cm .4cm; margin-top: .6cm; }
+  .verse { font-style: italic; color: #6e6359; margin-top: .5cm; }
+  .ecran { background: #faf6ef; border: 1px solid #e4d9c8; padding: .4cm; margin-bottom: .6cm; font-family: system-ui, sans-serif; }
+  @media print { .ecran { display: none; } body { margin: 0; } }
+</style>
+</head>
+<body>
+<form class="ecran" method="get">
+  Feuille à imprimer et à afficher (paroisse, salle commune…). Aucun nom n'y figure.<br>
+  Rayon : <select name="rayon">{% for r in (5, 15, 30, 50) %}<option value="{{ r }}" {{ 'selected' if r == rayon }}>{{ r }} km</option>{% endfor %}</select>
+  · Personne relais (facultatif) : <input type="text" name="relais" value="{{ relais }}" placeholder="Ex. : Marie, accueil de la paroisse" size="34">
+  <button>Mettre à jour</button> <button type="button" onclick="window.print()">Imprimer</button>
+  <a href="{{ url_for('annonces.liste') }}">Retour</a>
+</form>
+
+<h1><span class="croix">✝</span> Don de soi – donner et recevoir gratuitement</h1>
+<p class="meta">Annonces à moins de {{ rayon }} km de {{ g.user.city }}, au {{ today_fr }}</p>
+
+<h2>Ils ont besoin de…</h2>
+{% if besoins %}<ul>{% for x in besoins %}{% set a = x.a %}
+  <li class="{{ 'urgent' if x.essential }}">{{ a.title }} <span class="cat">— {{ CATEGORY_LABELS.get(a.category, a.category) }}, {{ a.city }}{{ ', première nécessité' if x.essential }}{{ ', plusieurs personnes souhaitées' if a.mains }}</span></li>
+{% endfor %}</ul>{% else %}<p class="meta">Aucun besoin pour l'instant.</p>{% endif %}
+
+<h2>Ils proposent…</h2>
+{% if dons %}<ul>{% for x in dons %}{% set a = x.a %}
+  <li>{{ a.title }} <span class="cat">— {{ CATEGORY_LABELS.get(a.category, a.category) }}, {{ a.city }}{{ ', prêt' if a.pret }}</span></li>
+{% endfor %}</ul>{% else %}<p class="meta">Aucun don pour l'instant.</p>{% endif %}
+
+<div class="encadre">
+  <strong>Pour donner ou recevoir :</strong> inscrivez-vous gratuitement sur <strong>{{ site }}</strong>
+  {%- if relais %}, ou adressez-vous à <strong>{{ relais }}</strong>, qui fera le lien pour vous{% endif %}.
+  Sans argent entre membres, sans publicité ; le nom des donateurs n'est jamais affiché.
+</div>
+<p class="verse">« Vous avez reçu gratuitement, donnez gratuitement. » (Mt 10,8)</p>
+</body>
+</html>

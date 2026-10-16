@@ -52,6 +52,8 @@
 {% elif g.user %}
 <p class="small"><a href="{{ url_for('trajets.recherche') }}">Rechercher un trajet</a> pour faire porter un don.</p>
 {% endif %}
+{% if g.user %}<p class="small"><a href="{{ url_for('annonces.imprimer') }}">Imprimer une feuille d'annonces</a>
+  à afficher pour les personnes sans internet.</p>{% endif %}
 
 {% if annonces %}
 <div class="grid">

@@ -41,6 +41,10 @@ def contenu(kind, objet_id):
     if kind == "grace":
         r = db.execute("SELECT author_id, body FROM actions_grace WHERE id = ?", (objet_id,)).fetchone()
         return r and (r["author_id"], r["body"])
+    if kind == "relais":
+        r = db.execute("SELECT propose_par, nom, adresse, city, description FROM lieux_relais "
+                       "WHERE id = ?", (objet_id,)).fetchone()
+        return r and (r["propose_par"], f"{r['nom']}\n{r['adresse']}, {r['city']}\n{r['description']}")
     return None
 
 
@@ -55,6 +59,8 @@ def masquer(kind, objet_id, masque=True):
         db.execute("UPDATE users SET profil_masque = ? WHERE id = ?", (v, objet_id))
     elif kind == "grace" and masque:
         db.execute("UPDATE actions_grace SET public = 0 WHERE id = ?", (objet_id,))
+    elif kind == "relais":
+        db.execute("UPDATE lieux_relais SET masque = ? WHERE id = ?", (v, objet_id))
 
 
 @bp.route("/signaler", methods=("POST",))
